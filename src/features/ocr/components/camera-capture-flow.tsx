@@ -10,6 +10,7 @@ import type { OcrResult } from "@/features/ocr/types";
 import { ManualEntryForm } from "@/features/measurements/components/manual-entry-form";
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
 import { Button } from "@/components/ui/button";
+import { Camera, CameraOff } from "lucide-react";
 
 type Step = "idle" | "camera" | "unavailable" | "edit" | "processing" | "confirm";
 
@@ -114,8 +115,11 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   if (step === "idle") {
     return (
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-surface-muted p-8 text-center">
-        <span aria-hidden="true" className="text-3xl">
-          📷
+        <span
+          aria-hidden="true"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-blue/10 text-brand-blue"
+        >
+          <Camera size={26} strokeWidth={1.75} />
         </span>
         <p className="text-sm text-foreground/70">
           Fotografe o visor do glicosímetro ou escolha uma imagem já
@@ -160,8 +164,11 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   if (step === "unavailable") {
     return (
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-surface-muted p-8 text-center">
-        <span aria-hidden="true" className="text-3xl">
-          🚫
+        <span
+          aria-hidden="true"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-status-below/10 text-status-below"
+        >
+          <CameraOff size={26} strokeWidth={1.75} />
         </span>
         <p className="text-sm text-foreground/70">
           {unavailableReason} Você ainda pode fotografar ou escolher uma

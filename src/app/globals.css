@@ -29,6 +29,15 @@
   --series-context-3: #0891b2;
   --series-context-4: #4a3aa7;
   --series-context-5: #e87ba4;
+
+  --shadow-color: 218 60% 20%;
+  --shadow-token-sm: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 1px 1px hsl(var(--shadow-color) / 0.04);
+  --shadow-token-md: 0 8px 24px -8px hsl(var(--shadow-color) / 0.16), 0 2px 6px -2px hsl(var(--shadow-color) / 0.08);
+  --shadow-token-lg: 0 24px 48px -12px hsl(var(--shadow-color) / 0.22), 0 8px 16px -8px hsl(var(--shadow-color) / 0.1);
+
+  --hero-mesh: radial-gradient(60% 55% at 12% 8%, color-mix(in oklab, var(--brand-teal) 24%, transparent) 0%, transparent 60%),
+    radial-gradient(50% 60% at 92% 0%, color-mix(in oklab, var(--brand-blue) 30%, transparent) 0%, transparent 65%),
+    radial-gradient(70% 50% at 50% 100%, color-mix(in oklab, var(--brand-navy) 12%, transparent) 0%, transparent 70%);
 }
 
 .dark {
@@ -51,6 +60,15 @@
   --series-context-3: #0891b2;
   --series-context-4: #9085e9;
   --series-context-5: #d55181;
+
+  --shadow-color: 220 70% 2%;
+  --shadow-token-sm: 0 1px 2px hsl(var(--shadow-color) / 0.4), 0 1px 1px hsl(var(--shadow-color) / 0.3);
+  --shadow-token-md: 0 8px 24px -8px hsl(var(--shadow-color) / 0.55), 0 2px 6px -2px hsl(var(--shadow-color) / 0.35);
+  --shadow-token-lg: 0 24px 48px -12px hsl(var(--shadow-color) / 0.6), 0 8px 16px -8px hsl(var(--shadow-color) / 0.4);
+
+  --hero-mesh: radial-gradient(60% 55% at 12% 8%, color-mix(in oklab, var(--brand-teal) 20%, transparent) 0%, transparent 60%),
+    radial-gradient(50% 60% at 92% 0%, color-mix(in oklab, var(--brand-blue) 22%, transparent) 0%, transparent 65%),
+    radial-gradient(70% 50% at 50% 100%, color-mix(in oklab, var(--brand-navy) 30%, transparent) 0%, transparent 70%);
 }
 
 @theme inline {
@@ -76,6 +94,11 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-lexend);
+
+  --shadow-sm: var(--shadow-token-sm);
+  --shadow-md: var(--shadow-token-md);
+  --shadow-lg: var(--shadow-token-lg);
 }
 
 body {

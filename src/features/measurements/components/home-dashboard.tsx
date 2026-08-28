@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Activity, TrendingUp, TrendingDown, Hash } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDb } from "@/lib/db/schema";
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
@@ -49,18 +50,25 @@ export function HomeDashboard() {
     <>
       <section
         aria-labelledby="last-measurement-heading"
-        className="rounded-2xl border border-border bg-surface p-5"
+        className="relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm"
+        style={{ backgroundImage: "var(--hero-mesh)" }}
       >
-        <h2 id="last-measurement-heading" className="font-semibold text-foreground">
+        <h2
+          id="last-measurement-heading"
+          className="flex items-center gap-2 text-sm font-semibold text-foreground/70"
+        >
+          <Activity aria-hidden="true" size={16} className="text-brand-blue" />
           Última medição
         </h2>
         {last ? (
-          <p className="mt-2 text-sm text-foreground/80">
-            <span className="text-lg font-semibold text-foreground">{last.valueMgDl} mg/dL</span>
-            {" · "}
-            {formatDateTime(last.measuredAt)}
-            {" · "}
-            {MEASUREMENT_CONTEXT_LABELS[last.context]}
+          <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-display text-4xl font-bold text-foreground">
+              {last.valueMgDl}
+              <span className="ml-1 text-base font-normal text-foreground/60">mg/dL</span>
+            </span>
+            <span className="w-full text-sm text-foreground/70 sm:w-auto">
+              {formatDateTime(last.measuredAt)} · {MEASUREMENT_CONTEXT_LABELS[last.context]}
+            </span>
           </p>
         ) : (
           <p className="mt-2 text-sm text-foreground/70">
@@ -77,7 +85,7 @@ export function HomeDashboard() {
       ) : (
         <section
           aria-labelledby="dashboard-progress-heading"
-          className="rounded-2xl border border-border bg-surface p-5"
+          className="rounded-2xl border border-border bg-surface p-5 shadow-sm"
         >
           <h2 id="dashboard-progress-heading" className="font-semibold text-foreground">
             {confirmed.length} de {MIN_MEASUREMENTS_FOR_DASHBOARD} medições registradas
@@ -125,7 +133,7 @@ function HomeSummary({ measurements, targetRange }: HomeSummaryProps) {
   return (
     <section aria-labelledby="home-summary-heading" className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between">
-        <h2 id="home-summary-heading" className="font-semibold text-foreground">
+        <h2 id="home-summary-heading" className="font-display font-semibold text-foreground">
           Resumo dos últimos {HOME_SUMMARY_PERIOD} dias
         </h2>
         <Link href="/app/analises" className="text-sm font-medium text-brand-blue hover:underline">
@@ -144,14 +152,14 @@ function HomeSummary({ measurements, targetRange }: HomeSummaryProps) {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="Média" value={String(stats.average ?? "—")} unit="mg/dL" />
-            <StatCard label="Mínimo" value={String(stats.min ?? "—")} unit="mg/dL" />
-            <StatCard label="Máximo" value={String(stats.max ?? "—")} unit="mg/dL" />
-            <StatCard label="Registros" value={String(stats.count)} />
+            <StatCard label="Média" value={String(stats.average ?? "—")} unit="mg/dL" icon={Activity} />
+            <StatCard label="Mínimo" value={String(stats.min ?? "—")} unit="mg/dL" icon={TrendingDown} />
+            <StatCard label="Máximo" value={String(stats.max ?? "—")} unit="mg/dL" icon={TrendingUp} />
+            <StatCard label="Registros" value={String(stats.count)} icon={Hash} />
           </div>
 
           {distribution ? (
-            <div className="rounded-2xl border border-border bg-surface p-4">
+            <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
               <p className="mb-3 text-sm font-semibold text-foreground">
                 Distribuição em relação à faixa configurada
               </p>

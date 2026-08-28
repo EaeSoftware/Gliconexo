@@ -15,6 +15,7 @@ import { MeasurementRow } from "@/features/measurements/components/measurement-r
 import { UndoToast } from "@/components/feedback/undo-toast";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ButtonLink } from "@/components/ui/button";
+import { ClipboardList, SearchX } from "lucide-react";
 
 export function HistoryList() {
   const [filters, setFilters] = useState(DEFAULT_MEASUREMENT_FILTERS);
@@ -59,7 +60,7 @@ export function HistoryList() {
       {groups.length === 0 ? (
         confirmed.length === 0 ? (
           <EmptyState
-            icon="📋"
+            icon={ClipboardList}
             title="Nenhuma medição encontrada"
             description="Assim que você registrar sua primeira medição, ela aparecerá aqui, organizada por dia."
             action={
@@ -70,7 +71,7 @@ export function HistoryList() {
           />
         ) : (
           <EmptyState
-            icon="🔍"
+            icon={SearchX}
             title="Nenhuma medição neste filtro"
             description="Tente ampliar o período ou remover algum filtro."
           />

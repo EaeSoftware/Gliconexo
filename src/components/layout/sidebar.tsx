@@ -17,19 +17,20 @@ export function Sidebar() {
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
+          const Icon = item.icon;
 
           return (
             <Link
               key={item.href}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium ${
+              className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-brand-blue/10 text-brand-blue"
                   : "text-foreground/70 hover:bg-surface-muted hover:text-foreground"
               }`}
             >
-              <span aria-hidden="true">{item.icon}</span>
+              <Icon aria-hidden="true" size={20} strokeWidth={isActive ? 2.25 : 2} />
               {item.label}
             </Link>
           );

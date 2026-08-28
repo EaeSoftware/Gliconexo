@@ -14,6 +14,7 @@ import { formatMeasurementCount } from "@/features/measurements/pluralize";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ButtonLink } from "@/components/ui/button";
 import { StatCard } from "@/features/measurements/components/stat-card";
+import { LineChart, SearchX } from "lucide-react";
 
 export function AnalyticsSummary() {
   const [period, setPeriod] = useState<PeriodFilter>(30);
@@ -38,7 +39,7 @@ export function AnalyticsSummary() {
   if (!isUnlocked) {
     return (
       <EmptyState
-        icon="📈"
+        icon={LineChart}
         title={
           remaining > 0
             ? `Faltam ${formatMeasurementCount(remaining)} para liberar os indicadores`
@@ -68,7 +69,7 @@ export function AnalyticsSummary() {
 
       {filtered.length === 0 ? (
         <EmptyState
-          icon="🔍"
+          icon={SearchX}
           title="Nenhuma medição neste período"
           description="Escolha um período maior para ver seus indicadores."
         />

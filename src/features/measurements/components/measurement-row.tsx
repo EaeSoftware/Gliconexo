@@ -7,6 +7,7 @@ import { MEASUREMENT_CONTEXT_LABELS } from "@/features/measurements/constants";
 import type { RangeClassification } from "@/features/measurements/classify";
 import { ClassificationBadge } from "@/features/measurements/components/classification-badge";
 import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 function formatTime(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(
@@ -79,7 +80,7 @@ export function MeasurementRow({ measurement, classification, onDelete }: Measur
             onClick={() => setConfirmingDelete(true)}
             className="rounded-full p-2 text-foreground/50 hover:bg-status-below/10 hover:text-status-below"
           >
-            <span aria-hidden="true">🗑</span>
+            <Trash2 aria-hidden="true" size={18} />
           </button>
         )}
       </div>

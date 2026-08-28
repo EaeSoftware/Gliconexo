@@ -15,6 +15,7 @@ import { classifyValue } from "@/features/measurements/classify";
 import { ClassificationBadge } from "@/features/measurements/components/classification-badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { SearchX } from "lucide-react";
 
 function formatDateTime(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -52,7 +53,7 @@ export function MeasurementDetail({ id }: { id: string }) {
   if (measurement === null || measurement.deletedAt) {
     return (
       <EmptyState
-        icon="🔍"
+        icon={SearchX}
         title="Medição não encontrada"
         description="Este registro não existe neste dispositivo ou já foi excluído."
         action={

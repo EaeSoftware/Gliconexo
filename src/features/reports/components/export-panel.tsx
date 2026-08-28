@@ -10,6 +10,7 @@ import { formatMeasurementCount } from "@/features/measurements/pluralize";
 import { shareOrDownloadFile, canShareFiles } from "@/lib/export/download-file";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/feedback/empty-state";
+import { FileText } from "lucide-react";
 
 function periodFilenamePart(period: PeriodFilter): string {
   if (period === "all") return "tudo";
@@ -38,7 +39,7 @@ export function ExportPanel() {
   if (measurements.length === 0) {
     return (
       <EmptyState
-        icon="🗎"
+        icon={FileText}
         title="Nenhum dado para exportar ainda"
         description="Assim que você tiver medições registradas, poderá escolher um período e exportar em CSV."
       />

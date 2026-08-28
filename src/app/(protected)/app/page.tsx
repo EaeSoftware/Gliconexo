@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { HomeDashboard } from "@/features/measurements/components/home-dashboard";
 
@@ -9,7 +10,7 @@ export default function InicioPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 sm:px-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Olá!</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Olá!</h1>
         <p className="text-foreground/70">
           Bem-vindo ao seu painel de acompanhamento glicêmico.
         </p>
@@ -18,9 +19,10 @@ export default function InicioPage() {
       <ButtonLink
         href="/app/registrar"
         variant="primary"
-        className="min-h-16 w-full text-base"
+        className="min-h-16 w-full gap-2 text-base"
       >
-        + Registrar glicemia
+        <Plus aria-hidden="true" size={20} strokeWidth={2.5} />
+        Registrar glicemia
       </ButtonLink>
 
       <HomeDashboard />
