@@ -73,6 +73,13 @@ ainda é placeholder — veja [`docs/telas.md`](./docs/telas.md).
 
 ## Configurar o Supabase
 
+> **Pendência registrada (decisão do responsável pelo produto, 2026-08-28):**
+> o projeto será conectado a uma conta **Supabase e Vercel própria**, ainda
+> a ser criada/informada pelo responsável pelo produto. Nenhum projeto
+> Supabase existente deve ser reaproveitado para o GlicoNexo. Até lá, a
+> Fase 2 (banco + autenticação real) fica bloqueada — o app roda apenas
+> com dados locais (ver `docs/database.md`).
+
 O projeto ainda **não está conectado a um projeto Supabase real**. Quando o
 projeto for criado (Fase 2):
 
@@ -148,10 +155,11 @@ para garantir fidelidade total à marca.
 
 ## Limitações e pendências conhecidas
 
-- Nenhuma autenticação real está ativa: os formulários de entrar/cadastro
-  chamam o SDK do Supabase, mas falharão graciosamente até haver um
-  projeto Supabase configurado.
-- Nenhum dado é persistido ainda (sem IndexedDB nem banco remoto).
+- **Pendência de decisão do produto:** conta Supabase/Vercel dedicada ao
+  GlicoNexo ainda não foi criada/informada — ver aviso em "Configurar o
+  Supabase" acima. Nenhuma autenticação real está ativa: os formulários
+  de entrar/cadastro chamam o SDK do Supabase, mas falharão graciosamente
+  até haver um projeto configurado.
 - Não há service worker/offline real, apenas o manifest da PWA.
 - Textos de privacidade e termos são rascunhos e estão marcados como
   pendentes de revisão jurídica.

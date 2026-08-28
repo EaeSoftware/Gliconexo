@@ -6,9 +6,13 @@
 de dados planejado (`CLAUDE.md`, seções 11 e 12) para orientar a Fase 2
 (banco e autenticação), que ainda não foi executada nesta entrega.
 
-Nenhum projeto Supabase real está conectado a este repositório. Antes de
-criar migrations, é necessário decidir com o responsável pelo produto:
-qual organização/projeto Supabase usar, e confirmar que nenhum dado real
+Nenhum projeto Supabase real está conectado a este repositório.
+**Decisão registrada em 2026-08-28:** o responsável pelo produto vai usar
+uma conta Supabase e Vercel própria (ainda a ser criada/informada) — os
+projetos Supabase já existentes na conta usada por este agente
+(`Life Book - APP`, `eae-os`) **não devem ser usados** para o GlicoNexo.
+A Fase 2 fica bloqueada até essa conta/projeto ser informado. Antes de
+criar migrations, também é necessário confirmar que nenhum dado real
 do TCC será usado como seed (apenas dados sintéticos e claramente
 fictícios).
 
