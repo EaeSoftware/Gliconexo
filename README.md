@@ -88,16 +88,29 @@ descrito em `CLAUDE.md`, seção 21:
   Recharts foram verificados manualmente com Playwright (sem testes
   unitários para eles, por não haver como emular a API real de Service
   Worker em `jsdom`, e por serem visuais) — ver `docs/testing.md`.
+- ✅ **Fase 2 (banco e autenticação), primeira parte:** projeto Supabase
+  `gliconexo` criado e migrations aplicadas (`supabase/migrations/`) —
+  `profiles`, `user_preferences`, `glucose_measurements` e
+  `consent_records`, todas com RLS ativo comparando sempre com
+  `auth.uid()` (nunca com `user_id` enviado pelo cliente), sem alertas
+  nos advisors de segurança do Supabase. Um trigger em `auth.users` cria
+  `profiles`/`user_preferences` automaticamente no cadastro. `src/proxy.ts`
+  (convenção que substituiu `middleware.ts` no Next.js 16) valida a sessão
+  no servidor para `/app/*` e `/onboarding`, redirecionando para
+  `/entrar` sem sessão e para `/onboarding` quando o cadastro ainda não
+  concluiu o consentimento — ver "Configurar o Supabase" abaixo. Os
+  formulários de auth (`entrar`/`cadastro`/`recuperar-senha`) já
+  chamavam o SDK do Supabase; agora têm um projeto real para conversar.
+  **Ainda não feito nesta parte:** testes de integração automatizados
+  para RLS (dois usuários reais) e a Edge Function de exclusão de conta.
 
 **Ainda não implementado** (fases seguintes do `CLAUDE.md`, seção 21):
 
-- Banco de dados remoto, migrations, RLS e autenticação real (Fase 2) —
-  **bloqueado por decisão de produto**: será usada uma conta
-  Supabase/Vercel própria, ainda não criada/informada (ver "Configurar o
-  Supabase" abaixo).
-- Fila de sincronização offline↔nuvem (Fase 4) — por isso todo registro
-  aparece com o selo "Pendente" no histórico, e os dados não saem do
-  dispositivo atual.
+- Fila de sincronização offline↔nuvem para `glucose_measurements` (Fase
+  4) — por isso todo registro ainda aparece com o selo "Pendente" no
+  histórico: as medições continuam **só no IndexedDB local**, sem
+  `user_id` nem escopo por conta, mesmo já existindo a tabela remota.
+  Ligar essa fila é o próximo passo natural agora que o banco existe.
 - Geração de PDF e exclusão de conta (o resto da Fase 7 — CSV e JSON já
   existem, ver acima). Exclusão de conta depende da autenticação real.
 - Content Security Policy completa e testes cross-browser em dispositivo
@@ -138,19 +151,19 @@ ainda é placeholder — veja [`docs/telas.md`](./docs/telas.md).
 
 ## Configurar o Supabase
 
-> **Pendência registrada (decisão do responsável pelo produto, 2026-08-28):**
-> o projeto será conectado a uma conta **Supabase e Vercel própria**, ainda
-> a ser criada/informada pelo responsável pelo produto. Nenhum projeto
-> Supabase existente deve ser reaproveitado para o GlicoNexo. Até lá, a
-> Fase 2 (banco + autenticação real) fica bloqueada — o app roda apenas
-> com dados locais (ver `docs/database.md`).
+O projeto `gliconexo` já existe (organização Supabase própria do
+responsável pelo produto, região `sa-east-1`) e as migrations em
+`supabase/migrations/` já foram aplicadas nele. O projeto Supabase
+pré-existente na mesma conta (`mutran.dev@gmail.com's Project`) é de
+outra aplicação e não deve ser usado aqui.
 
-O projeto ainda **não está conectado a um projeto Supabase real**. Quando o
-projeto for criado (Fase 2):
+Para rodar localmente:
 
-1. Crie um projeto em [supabase.com](https://supabase.com).
-2. Copie a URL e a chave anônima (`anon key`) para `.env.local`, usando
-   `.env.example` como referência:
+1. Peça a URL do projeto e a chave `anon`/`publishable` a quem tem acesso
+   ao painel do Supabase (Project Settings → API) — elas não ficam neste
+   repositório.
+2. Preencha `.env.local` (nunca commitado — `.env.example` mostra as
+   chaves esperadas, sem valores):
 
    ```env
    NEXT_PUBLIC_SUPABASE_URL=
@@ -160,9 +173,16 @@ projeto for criado (Fase 2):
    ```
 
 3. `SUPABASE_SERVICE_ROLE_KEY` nunca deve ser exposta ao navegador — use
-   apenas em código server-side ou em Edge Functions.
-4. Migrations versionadas viverão em `supabase/migrations/` (a criar na
-   Fase 2, junto com as políticas de Row Level Security).
+   apenas em código server-side ou em Edge Functions (ainda não existe
+   nenhuma neste projeto).
+4. Para aplicar uma nova migration, adicione o arquivo em
+   `supabase/migrations/` (nomeado `AAAAMMDDHHmmss_descricao.sql`, na
+   ordem em que deve rodar) e aplique-o no projeto Supabase — via MCP
+   (`apply_migration`) ou `supabase db push` com a CLI oficial.
+5. Na Vercel, as mesmas três variáveis `NEXT_PUBLIC_*`/`SUPABASE_SERVICE_ROLE_KEY`
+   precisam estar configuradas em Project Settings → Environment
+   Variables do projeto `gliconexo` (a `SUPABASE_SERVICE_ROLE_KEY` sempre
+   como variável de servidor, nunca `NEXT_PUBLIC_*`).
 
 ## Testar como PWA e modo offline
 
@@ -199,6 +219,9 @@ src/
     onboarding/         fluxo de 4 passos pós-cadastro
     offline/              página offline (fallback do service worker)
     manifest.ts         manifest da PWA
+  proxy.ts               valida sessão/onboarding no servidor para /app e /onboarding
+  types/
+    supabase.ts          tipos gerados do schema do banco (Database)
   components/
     ui/                 primitivos (Button, TextField, Logo)
     layout/             Sidebar, BottomNav, ConnectionStatus
@@ -221,6 +244,8 @@ public/
   sw.js                  service worker (cache, offline, atualização controlada)
 tests/
   unit/                 testes Vitest
+supabase/
+  migrations/            migrations SQL versionadas (aplicadas no projeto `gliconexo`)
 docs/
   architecture.md, database.md, privacy-and-security.md, testing.md
 ```
@@ -236,14 +261,22 @@ para garantir fidelidade total à marca.
 
 ## Limitações e pendências conhecidas
 
-- **Pendência de decisão do produto:** conta Supabase/Vercel dedicada ao
-  GlicoNexo ainda não foi criada/informada — ver aviso em "Configurar o
-  Supabase" acima. Nenhuma autenticação real está ativa: os formulários
-  de entrar/cadastro chamam o SDK do Supabase, mas falharão graciosamente
-  até haver um projeto configurado.
+- O projeto Vercel `gliconexo` foi criado ligado a este repositório, mas
+  ainda precisa das variáveis de ambiente do Supabase configuradas
+  manualmente em Project Settings → Environment Variables antes de um
+  deploy funcionar de ponta a ponta (ver "Configurar o Supabase" acima).
+- Autenticação (`entrar`/`cadastro`/`recuperar-senha`) já fala com um
+  projeto Supabase real, mas ainda não há botão de logout na interface,
+  nem limpeza de dados locais no logout (CLAUDE.md, seção 10.2) — falta
+  implementar.
+- Testes automatizados de isolamento por RLS (dois usuários reais,
+  `docs/database.md`) ainda não foram escritos — as políticas foram
+  conferidas manualmente pelos advisors de segurança do Supabase, não
+  por um teste de integração no CI.
 - Medições já são persistidas de verdade, mas **só neste dispositivo**:
-  não há sincronização com nuvem, escopo por usuário nem limpeza no
-  logout (não existe logout real ainda).
+  a tabela `glucose_measurements` existe no Supabase, mas a fila de
+  sincronização offline↔nuvem (Fase 4) ainda não foi implementada — não
+  há `user_id`, escopo por usuário nem limpeza no logout ainda.
 - O service worker cobre o shell público e os assets estáticos, mas uma
   primeira visita **totalmente** offline (nunca abriu o app neste
   dispositivo antes) não tem nada em cache para mostrar — limitação

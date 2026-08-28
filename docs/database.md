@@ -2,19 +2,20 @@
 
 ## Status
 
-**Nenhuma migration foi criada ainda.** Este documento registra o modelo
-de dados planejado (`CLAUDE.md`, seções 11 e 12) para orientar a Fase 2
-(banco e autenticação), que ainda não foi executada nesta entrega.
+**Migrations criadas e aplicadas** em `supabase/migrations/` — projeto
+Supabase `gliconexo` (ref `nbgvlydunappunuxlbgq`, região `sa-east-1`),
+criado em 2026-08-28 na conta própria do responsável pelo produto
+(organização Supabase `mutran.dev@gmail.com`). As 4 tabelas abaixo
+existem no banco, com RLS ativo e sem alertas nos advisors de segurança
+do Supabase no momento da aplicação. Nenhum dado real do TCC foi usado
+como seed — o banco foi criado vazio.
 
-Nenhum projeto Supabase real está conectado a este repositório.
-**Decisão registrada em 2026-08-28:** o responsável pelo produto vai usar
-uma conta Supabase e Vercel própria (ainda a ser criada/informada) — os
-projetos Supabase já existentes na conta usada por este agente
-(`Life Book - APP`, `eae-os`) **não devem ser usados** para o GlicoNexo.
-A Fase 2 fica bloqueada até essa conta/projeto ser informado. Antes de
-criar migrations, também é necessário confirmar que nenhum dado real
-do TCC será usado como seed (apenas dados sintéticos e claramente
-fictícios).
+O projeto antigo usado nesta conta (`mutran.dev@gmail.com's Project`,
+ref `cirvznnsjwfrlyepbfni`) não foi tocado nem usado para o GlicoNexo.
+
+Pendente: gerar os testes automatizados de isolamento por RLS descritos
+abaixo (hoje só a política foi escrita e conferida manualmente pelos
+advisors — faltam os testes de integração com dois usuários reais).
 
 ## Modelo de dados planejado
 

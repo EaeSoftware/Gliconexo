@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ONBOARDING_STEPS } from "@/features/onboarding/steps";
+import { PRIVACY_CONSENT_TYPE, PRIVACY_CONSENT_VERSION } from "@/features/onboarding/consent";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 
@@ -10,18 +12,65 @@ export function OnboardingFlow() {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [consentAccepted, setConsentAccepted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const step = ONBOARDING_STEPS[stepIndex];
   const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
   const isFirstStep = stepIndex === 0;
 
-  function handleNext() {
-    if (isLastStep) {
-      // TODO (Fase 2): registrar consent_records com versão dos termos aceita.
-      router.push("/app");
+  async function handleNext() {
+    if (!isLastStep) {
+      setStepIndex((current) => current + 1);
       return;
     }
-    setStepIndex((current) => current + 1);
+
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setSubmitError("Sua sessão expirou. Entre novamente para concluir o onboarding.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const acceptedAt = new Date().toISOString();
+
+    const { error: consentError } = await supabase.from("consent_records").insert({
+      user_id: user.id,
+      consent_type: PRIVACY_CONSENT_TYPE,
+      document_version: PRIVACY_CONSENT_VERSION,
+      accepted_at: acceptedAt,
+    });
+
+    if (consentError) {
+      setSubmitError(
+        "Não foi possível registrar seu consentimento. Verifique sua conexão e tente novamente.",
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ onboarding_completed_at: acceptedAt })
+      .eq("id", user.id);
+
+    if (profileError) {
+      setSubmitError(
+        "Consentimento registrado, mas houve um erro ao concluir o onboarding. Tente novamente.",
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    router.push("/app");
+    router.refresh();
   }
 
   return (
@@ -68,6 +117,12 @@ export function OnboardingFlow() {
         </label>
       ) : null}
 
+      {submitError ? (
+        <p role="alert" className="text-sm font-medium text-status-below">
+          {submitError}
+        </p>
+      ) : null}
+
       <div className="flex gap-3">
         {!isFirstStep ? (
           <Button
@@ -75,6 +130,7 @@ export function OnboardingFlow() {
             variant="outline"
             className="flex-1"
             onClick={() => setStepIndex((current) => current - 1)}
+            disabled={isSubmitting}
           >
             Voltar
           </Button>
@@ -83,9 +139,9 @@ export function OnboardingFlow() {
           type="button"
           className="flex-1"
           onClick={handleNext}
-          disabled={isLastStep && !consentAccepted}
+          disabled={(isLastStep && !consentAccepted) || isSubmitting}
         >
-          {isLastStep ? "Concluir" : "Continuar"}
+          {isSubmitting ? "Salvando..." : isLastStep ? "Concluir" : "Continuar"}
         </Button>
       </div>
     </div>

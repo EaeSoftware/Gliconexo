@@ -24,15 +24,21 @@ flowchart TD
 
 - `src/app/(public)/*` — rotas públicas (landing, entrar, cadastro,
   recuperar senha, privacidade, termos).
-- `src/app/onboarding` — fluxo de 4 passos, sem persistência do aceite.
+- `src/app/onboarding` — fluxo de 4 passos; o último passo grava
+  `consent_records` e `profiles.onboarding_completed_at` no Supabase.
 - `src/app/(protected)/app/*` — casca do app autenticado, com todas as
   rotas do MVP (`início`, `registrar`, `histórico`, `histórico/[id]`,
   `análises`, `relatórios`, `configurações`, `privacidade`), navegação
   inferior no mobile e sidebar no desktop.
 - `src/lib/supabase/client.ts` e `src/lib/supabase/server.ts` — clientes
-  Supabase (browser/servidor) usando `@supabase/ssr`, prontos para receber
-  credenciais reais quando a conta do produto existir (ver
-  `docs/database.md` — pendência registrada).
+  Supabase (browser/servidor) usando `@supabase/ssr`, tipados com
+  `Database` (`src/types/supabase.ts`, gerado a partir do schema real —
+  ver `docs/database.md`).
+- `src/proxy.ts` — valida a sessão no servidor para `/app/*` e
+  `/onboarding` (`CLAUDE.md`, seção 9) usando `supabase.auth.getUser()`
+  (revalida com o servidor de auth, ao contrário de `getSession()`, que
+  só decodifica o cookie local) e redireciona conforme o estado de
+  `profiles.onboarding_completed_at`.
 - `src/features/measurements/schemas.ts` — schema Zod único, compartilhado
   entre o fluxo manual e o futuro fluxo de confirmação OCR (regra 2 da
   seção 17 do `CLAUDE.md`).
@@ -85,10 +91,11 @@ recentes na UI do histórico. Decisões relevantes:
   `tests/unit/`, mantendo essa lógica fora dos componentes visuais
   (CLAUDE.md, seção 6, "metricas devem ser funcoes puras e testadas").
 
-**Ainda não implementado nesta camada:** nenhum dado é escopado por
-`user_id` (não existe autenticação ainda — todo o dispositivo é uma
-"conta local" única) nem limpo em um logout (que também não existe);
-isso é trabalho da Fase 2/4, junto da privacidade local descrita na
+**Ainda não implementado nesta camada:** embora a tabela
+`glucose_measurements` já exista no Supabase (com RLS por `user_id`),
+nada neste repositório local é escopado por usuário nem limpo em um
+logout (que também não existe na interface ainda); isso é trabalho da
+Fase 4 (`SyncService`, abaixo), junto da privacidade local descrita na
 seção 13 do `CLAUDE.md`. Nada sincroniza com o Supabase ainda — é por
 isso que todo registro aparece com o selo "Pendente" no histórico.
 
@@ -279,9 +286,10 @@ relação ao que a maioria dos modelos de IA "conhece" de treinamento (ver
 
 - `cookies()` e `headers()` são assíncronos — `src/lib/supabase/server.ts`
   já usa `await cookies()`.
-- Middleware foi renomeado para `proxy.ts` — ainda não existe neste
-  projeto porque a validação de sessão no servidor (`CLAUDE.md`, seção 9)
-  será implementada junto da autenticação real, na Fase 2.
+- Middleware foi renomeado para `proxy.ts` — é o que `src/proxy.ts` usa
+  para a validação de sessão no servidor (`CLAUDE.md`, seção 9); o nome
+  antigo (`middleware.ts`/`export function middleware`) gera um aviso de
+  depreciação no build.
 - O manifest da PWA é gerado via `src/app/manifest.ts` (convenção nativa
   do App Router), não como um `public/manifest.webmanifest` estático.
 - Turbopack é o bundler padrão para `dev` e `build`.
