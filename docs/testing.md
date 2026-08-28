@@ -26,16 +26,21 @@ npm run build         # build de produção (também roda checagem de tipos)
 | `tests/unit/target-range-schema.test.ts` | Schema Zod da faixa pessoal: os dois valores juntos ou nenhum, mínimo &lt; máximo, intervalo 1–999. |
 | `tests/unit/measurement-repository.test.ts` | `MeasurementRepository` sobre IndexedDB real (via `fake-indexeddb`): criar, listar (ignorando excluídos), editar com incremento de versão, exclusão lógica e `restore`. |
 | `tests/unit/preferences-repository.test.ts` | `preferencesRepository` sobre IndexedDB real: salvar, recuperar e sobrescrever a faixa pessoal. |
+| `tests/unit/csv.test.ts` | Geração do CSV de medições: cabeçalho em português, ordenação, observação omitida por padrão, escape de vírgula/aspas/quebra de linha. |
+| `tests/unit/export-all-data.test.ts` | Formato do export completo (JSON): exclui medições excluídas logicamente, inclui/omite a faixa pessoal corretamente. |
+| `tests/unit/pluralize.test.ts` | `formatMeasurementCount`: concordância singular/plural de "medição(ões)", com e sem "confirmada(s)" — criada depois de um bug real de concordância aparecer em produção. |
 
 Executado nesta entrega: `npm run lint`, `npm run typecheck` (via
 `tsc --noEmit` e também dentro de `next build`), `npm run build` e
-`npm run test` — todos passando (53 testes, 10 arquivos). Além disso, os
+`npm run test` — todos passando (70 testes, 13 arquivos). Além disso, os
 fluxos completos (registrar → início → histórico → análises → editar →
 excluir → desfazer; configurar faixa → ver classificação → filtrar por
-faixa → ver percentuais em análises; e o gráfico de linha temporal com e
+faixa → ver percentuais em análises; o gráfico de linha temporal com e
 sem faixa configurada, incluindo a tabela textual acessível e o filtro
-de período) foram exercitados manualmente com Playwright contra o build
-de produção, sem erros de console/página.
+de período; e a exportação de CSV/JSON, incluindo o conteúdo do arquivo
+baixado e a posição dos botões em relação à barra de navegação) foram
+exercitados manualmente com Playwright contra o build de produção, sem
+erros de console/página.
 
 ## O que ainda não existe
 

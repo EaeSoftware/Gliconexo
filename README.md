@@ -18,9 +18,10 @@ A especificação completa do produto está em [`CLAUDE.md`](./CLAUDE.md).
 ## Status atual do desenvolvimento
 
 Esta entrega cobre a **Fase 0 (auditoria)**, a **Fase 1 (base do
-projeto)**, boa parte da **Fase 3 (registro manual e histórico)** e o
-gráfico de linha temporal da **Fase 6 (dashboard)** do plano descrito
-em `CLAUDE.md`, seção 21:
+projeto)**, boa parte da **Fase 3 (registro manual e histórico)**, o
+gráfico de linha temporal da **Fase 6 (dashboard)**, e a exportação de
+dados (CSV/JSON) da **Fase 7 (relatórios e privacidade)** do plano
+descrito em `CLAUDE.md`, seção 21:
 
 - ✅ Scaffold Next.js (App Router) + TypeScript estrito + Tailwind CSS v4.
 - ✅ Identidade visual GlicoNexo (logo, ícones PWA, paleta, tema claro/escuro/sistema).
@@ -45,10 +46,18 @@ em `CLAUDE.md`, seção 21:
   textual acessível equivalente ao gráfico (`<details>`, para navegação
   por teclado/leitor de tela). Não interpola dias sem dados nem projeta
   tendência.
+- ✅ **Exportação de dados**, com cuidado para não conflitar com
+  funções nativas do Android/iOS: em Relatórios, um CSV real das
+  medições (período, observações opcionais, cabeçalhos em português,
+  ISO + horário local, escape correto); em Configurações/Privacidade,
+  um JSON com todos os dados locais. Os dois usam a Web Share API
+  quando disponível (com fallback para download comum) e nunca
+  `window.open` nem elementos fixos que possam cobrir a navegação —
+  ver "Exportação e compartilhamento no mobile" em `docs/telas.md`.
 - ✅ Testes unitários (Vitest) para os schemas Zod, a regra das quatro
-  medições, os filtros/agrupamento/classificação de histórico e os
-  repositórios IndexedDB (com `fake-indexeddb`) — 53 testes, todos
-  passando.
+  medições, os filtros/agrupamento/classificação de histórico, a
+  geração de CSV e os repositórios IndexedDB (com `fake-indexeddb`) —
+  70 testes, todos passando.
 
 **Ainda não implementado** (fases seguintes do `CLAUDE.md`, seção 21):
 
@@ -62,7 +71,8 @@ em `CLAUDE.md`, seção 21:
 - Captura por câmera e OCR (Tesseract.js) (Fase 5).
 - Séries por contexto e gráfico de quantidade por dia/contexto (o resto
   da Fase 6 — o gráfico principal já existe, ver acima).
-- Geração de PDF/CSV e exclusão de conta (Fase 7).
+- Geração de PDF e exclusão de conta (o resto da Fase 7 — CSV e JSON já
+  existem, ver acima). Exclusão de conta depende da autenticação real.
 - Service worker com estratégia de cache e testes cross-browser (Fase 8).
 
 Os pontos pendentes estão marcados com `TODO (Fase N)` no código onde

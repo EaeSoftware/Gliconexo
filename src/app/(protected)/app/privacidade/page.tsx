@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ExportAllDataButton } from "@/features/privacy/components/export-all-data-button";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Privacidade" };
@@ -19,12 +20,15 @@ export default function PrivacidadeAppPage() {
       <section className="rounded-2xl border border-border bg-surface p-5">
         <h2 className="mb-2 font-semibold text-foreground">Exportar meus dados</h2>
         <p className="mb-3 text-sm text-foreground/70">
-          Gera um arquivo com todas as suas medições, preferências e
-          consentimentos registrados.
+          Gera um arquivo com todas as suas medições e sua faixa pessoal
+          salvas neste dispositivo. Consentimentos ainda não são
+          registrados (aguardando a autenticação real, ver{" "}
+          <Link href="/privacidade" className="underline">
+            política de privacidade
+          </Link>
+          ).
         </p>
-        <Button type="button" variant="outline" disabled>
-          Exportar todos os dados
-        </Button>
+        <ExportAllDataButton />
       </section>
 
       <section className="rounded-2xl border border-border bg-surface p-5">
@@ -50,8 +54,9 @@ export default function PrivacidadeAppPage() {
       </section>
 
       <p className="text-xs text-foreground/50">
-        As ações desta página serão habilitadas quando a autenticação e a
-        função de exclusão de conta forem implementadas (ver{" "}
+        Revogar consentimento e excluir conta serão habilitados quando a
+        autenticação e a função de exclusão de conta forem implementadas
+        (ver{" "}
         <Link href="/privacidade" className="underline">
           política de privacidade
         </Link>

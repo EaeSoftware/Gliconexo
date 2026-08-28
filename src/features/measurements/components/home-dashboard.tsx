@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { getDb } from "@/lib/db/schema";
 import { getDashboardProgress } from "@/features/measurements/dashboard-progress";
 import { MIN_MEASUREMENTS_FOR_DASHBOARD, MEASUREMENT_CONTEXT_LABELS } from "@/features/measurements/constants";
+import { formatMeasurementCount } from "@/features/measurements/pluralize";
 
 function formatDateTime(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -53,7 +54,7 @@ export function HomeDashboard() {
         </div>
         <p className="mt-3 text-sm text-foreground/70">
           {remaining > 0
-            ? `Faltam ${remaining} medi${remaining > 1 ? "ções" : "ção"} confirmada${remaining > 1 ? "s" : ""} para liberar gráficos e indicadores.`
+            ? `Faltam ${formatMeasurementCount(remaining, { confirmed: true })} para liberar gráficos e indicadores.`
             : "Seus gráficos e indicadores já estão disponíveis."}
         </p>
       </section>

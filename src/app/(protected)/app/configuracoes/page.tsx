@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { InstallPwaButton } from "@/components/pwa/install-button";
 import { TargetRangeForm } from "@/features/preferences/components/target-range-form";
+import { ExportAllDataButton } from "@/features/privacy/components/export-all-data-button";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -49,9 +50,7 @@ export default function ConfiguracoesPage() {
 
       <SettingsSection title="Privacidade e dados">
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button type="button" variant="outline" disabled>
-            Exportar todos os dados
-          </Button>
+          <ExportAllDataButton />
           <Button type="button" variant="outline" disabled>
             Excluir conta e dados
           </Button>

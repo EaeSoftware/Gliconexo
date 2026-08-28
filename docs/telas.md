@@ -188,32 +188,42 @@ não existem; filtro por contexto e "mês atual" em Análises também
 ficaram fora deste incremento (o histórico já filtra por contexto).
 
 ### `/app/relatorios` — Relatórios
-**Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Componente:** `ReportsStatus` (`src/features/measurements/components/reports-status.tsx`) · **Status:** ⚪ Placeholder (honesto sobre haver ou não dados)
+**Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Componente:** `ExportPanel` (`src/features/reports/components/export-panel.tsx`) · **Status:** 🟡 Parcial — CSV real, PDF ainda não existe
 
-Lê a contagem real de medições. Se não houver nenhuma, mostra "Nenhum
-dado para exportar ainda"; se já houver medições registradas, mostra
-"Exportação ainda não implementada" citando a quantidade real — em vez
-de dizer "nenhum dado" quando na verdade já existem registros. A
-geração de PDF/CSV em si é Fase 7.
+Sem medições, mostra "Nenhum dado para exportar ainda". Com medições:
+seletor de período (7/30/90 dias/tudo, reaproveitando `PeriodSelect`),
+checkbox opcional "Incluir observações no arquivo" (desmarcado por
+padrão — observações só entram se o usuário marcar, CLAUDE.md 10.12),
+contagem real de medições no período, e um botão que gera um CSV de
+verdade (`buildMeasurementsCsv`, testado): UTF-8, cabeçalhos em
+português, timestamp ISO **e** horário local, valor/unidade/contexto/
+relação com refeição/origem/observação, com escape correto de vírgulas,
+aspas e quebras de linha. O botão usa a Web Share API quando disponível
+("Compartilhar CSV") ou baixa o arquivo direto ("Baixar CSV") — nunca
+`window.open`, para não abrir uma aba nem disparar nenhum comportamento
+nativo inesperado no Android/iOS. **O que falta:** exportação em PDF
+(ainda mostra uma nota explicando isso).
 
 ### `/app/configuracoes` — Configurações
-**Arquivo:** `src/app/(protected)/app/configuracoes/page.tsx` · **Status:** 🟡 Parcial — as únicas duas seções realmente funcionais do app protegido
+**Arquivo:** `src/app/(protected)/app/configuracoes/page.tsx` · **Status:** 🟡 Parcial
 
 - **Aparência** — ✅ `ThemeToggle` alterna de verdade entre claro/escuro/sistema, persiste em `localStorage` e evita flash incorreto no carregamento (`ThemeScript` no `<head>`).
 - **Instalar aplicativo** — ✅ `InstallPwaButton` usa o evento real `beforeinstallprompt`; se o app já estiver instalado, mostra uma mensagem em vez do botão; no iOS, mostra a instrução manual de "Adicionar à Tela de Início".
 - **Faixa pessoal de glicemia** — ✅ `TargetRangeForm` (`src/features/preferences/components/target-range-form.tsx`) salva mínimo/máximo de verdade no IndexedDB (`preferencesRepository`, tabela `preferences`). Validação exige os dois valores juntos (ou nenhum) e mínimo &lt; máximo (`targetRangeSchema`, testado). Assim que salva, os selos de classificação e os percentuais em Histórico/Análises passam a considerar essa faixa — sem prometer nenhuma recomendação médica, só a informação.
 - **Sincronização** — ⚪ só texto explicando o que vai existir.
-- **Privacidade e dados** — ⚪ botões "Exportar dados" / "Excluir conta" ficam desabilitados de propósito (`disabled`), com link para `/app/privacidade`.
+- **Privacidade e dados** — 🟡 **"Exportar todos os dados"** agora é real (`ExportAllDataButton`): baixa/compartilha um JSON com todas as medições ativas e a faixa pessoal salvas neste dispositivo. **"Excluir conta e dados"** continua desabilitado de propósito — apagar a "conta" não faz sentido sem autenticação real, e o fluxo de exclusão do CLAUDE.md (seção 15) exige identificar o usuário pela sessão, nunca por um id enviado do cliente.
 - **Sobre** — ✅ mostra a versão do app e links para as políticas públicas.
 
 ### `/app/privacidade` — Central de privacidade (dentro do app)
-**Arquivo:** `src/app/(protected)/app/privacidade/page.tsx` · **Status:** ⚪ Placeholder
+**Arquivo:** `src/app/(protected)/app/privacidade/page.tsx` · **Status:** 🟡 Parcial
 
 Diferente de `/privacidade` (a política pública), esta é a tela de
-**ações** do usuário sobre os próprios dados: exportar tudo, revogar
-consentimento, excluir conta. Os três botões existem mas ficam
-desabilitados — dependem da função server-side de exclusão de conta e da
-exportação real (Fase 7 / seção 15 do `CLAUDE.md`).
+**ações** do usuário sobre os próprios dados. "Exportar meus dados" usa
+o mesmo `ExportAllDataButton` de Configurações — botão real, gera o
+JSON completo. "Revogar consentimento" e "Excluir conta e dados"
+continuam desabilitados: dependem da função server-side de exclusão de
+conta (Fase 7 / seção 15 do `CLAUDE.md`), que por sua vez depende da
+autenticação real (Fase 2).
 
 ---
 
@@ -229,6 +239,8 @@ exportação real (Fase 7 / seção 15 do `CLAUDE.md`).
 | `ConnectionStatus` | `src/components/layout/connection-status.tsx` | Badge Online/Offline em tempo real. |
 | `ClassificationBadge` | `src/features/measurements/components/classification-badge.tsx` | Selo Abaixo/Dentro/Acima (texto + ícone + cor) usado no histórico e no detalhe. |
 | `GlucoseChartSection` | `src/features/measurements/components/glucose-chart-section.tsx` | Gráfico de linha temporal (Recharts, carregado sob demanda) + tabela textual acessível equivalente. |
+| `ExportPanel` | `src/features/reports/components/export-panel.tsx` | Exportação de CSV das medições, com período e observações opcionais. |
+| `ExportAllDataButton` | `src/features/privacy/components/export-all-data-button.tsx` | Exportação/compartilhamento do JSON completo de dados locais. |
 | `Sidebar` / `BottomNav` | `src/components/layout/` | Navegação do app protegido, adaptada por breakpoint. |
 
 ## Camada de dados local (IndexedDB/Dexie)
@@ -260,6 +272,26 @@ selo "Pendente" no histórico. A faixa pessoal também é só local — na
 Fase 2, ela vai migrar para `user_preferences` no Supabase (ver
 `docs/database.md`).
 
+## Exportação e compartilhamento no mobile
+
+`src/lib/export/download-file.ts` centraliza como os arquivos (CSV, JSON)
+saem do app, com cuidado explícito para não conflitar com funções
+nativas do Android/iOS nem com a navegação do próprio app:
+
+- Prefere a Web Share API com arquivos (`navigator.share`/`canShare`)
+  quando disponível — abre a folha de compartilhamento nativa do
+  sistema. Se o usuário cancelar (`AbortError`), a função para ali; ela
+  **nunca** dispara um download automático depois de um cancelamento
+  explícito.
+- Sem Web Share API (ex.: a maioria dos navegadores desktop), cai para
+  um download comum via link temporário (`<a download>` + `Blob`) — não
+  usa `window.open`, que poderia abrir aba/popup e confundir o fluxo no
+  mobile.
+- Nenhum elemento novo usa `position: fixed`; os botões de exportação
+  ficam no fluxo normal da página, então nunca cobrem nem competem com
+  a barra de navegação inferior (`BottomNav`, que já reserva sua própria
+  área com `env(safe-area-inset-bottom)` para a faixa de gestos do iOS).
+
 ## Como isso se encaixa nas fases do `CLAUDE.md`
 
 Autenticação real (Fase 2) ainda destrava `/entrar`, `/cadastro`,
@@ -272,5 +304,6 @@ ainda vai destravar o selo "Pendente" → "Sincronizado" e o indicador em
 Configurações; OCR (Fase 5) destrava a aba "Usar câmera"; gráficos
 (Fase 6) já destravaram o gráfico de linha temporal de `/app/analises`
 — falta apenas a série por contexto e o gráfico de quantidade por
-dia/contexto; exportação e exclusão de conta (Fase 7) destravam
-`/app/relatorios` e as ações de `/app/privacidade`.
+dia/contexto; exportação (Fase 7) já destravou o CSV de `/app/relatorios`
+e o JSON completo em `/app/privacidade`/Configurações — faltam apenas o
+PDF e a exclusão de conta, que continua exigindo a autenticação real.

@@ -1,21 +1,16 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDb } from "@/lib/db/schema";
 import { getDashboardProgress } from "@/features/measurements/dashboard-progress";
 import { computeMeasurementStats, computeRangeDistribution } from "@/features/measurements/stats";
 import { filterMeasurements, type PeriodFilter } from "@/features/measurements/filter-measurements";
 import { GlucoseChartSection } from "@/features/measurements/components/glucose-chart-section";
+import { PeriodSelect } from "@/features/measurements/components/period-select";
+import { formatMeasurementCount } from "@/features/measurements/pluralize";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ButtonLink } from "@/components/ui/button";
-
-const PERIODS: { value: PeriodFilter; label: string }[] = [
-  { value: 7, label: "7 dias" },
-  { value: 30, label: "30 dias" },
-  { value: 90, label: "90 dias" },
-  { value: "all", label: "Tudo" },
-];
 
 function StatCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
@@ -29,7 +24,6 @@ function StatCard({ label, value, unit }: { label: string; value: string; unit?:
 }
 
 export function AnalyticsSummary() {
-  const periodId = useId();
   const [period, setPeriod] = useState<PeriodFilter>(30);
 
   const measurements = useLiveQuery(
@@ -55,7 +49,7 @@ export function AnalyticsSummary() {
         icon="📈"
         title={
           remaining > 0
-            ? `Faltam ${remaining} medi${remaining > 1 ? "ções" : "ção"} para liberar os indicadores`
+            ? `Faltam ${formatMeasurementCount(remaining)} para liberar os indicadores`
             : "Gráficos liberados"
         }
         description="Média, mínimo, máximo e distribuição por faixa aparecem aqui assim que você confirmar sua quarta medição. Nenhuma tendência é projetada e dias sem registro não são preenchidos automaticamente."
@@ -78,26 +72,7 @@ export function AnalyticsSummary() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <label htmlFor={periodId} className="text-sm font-medium text-foreground">
-          Período
-        </label>
-        <select
-          id={periodId}
-          className="min-h-11 rounded-lg border border-border bg-surface px-3 text-sm"
-          value={String(period)}
-          onChange={(event) => {
-            const raw = event.target.value;
-            setPeriod(raw === "all" ? "all" : (Number(raw) as 7 | 30 | 90));
-          }}
-        >
-          {PERIODS.map((item) => (
-            <option key={String(item.value)} value={String(item.value)}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <PeriodSelect value={period} onChange={setPeriod} />
 
       {filtered.length === 0 ? (
         <EmptyState
@@ -145,8 +120,8 @@ export function AnalyticsSummary() {
           <GlucoseChartSection measurements={filtered} targetRange={targetRange} />
 
           <p className="text-xs text-foreground/50">
-            Calculado com {stats.count} medição{stats.count > 1 ? "ões" : ""} confirmada
-            {stats.count > 1 ? "s" : ""} no período selecionado.
+            Calculado com {formatMeasurementCount(stats.count, { confirmed: true })} no
+            período selecionado.
           </p>
         </>
       )}
