@@ -3,7 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDb } from "@/lib/db/schema";
 import { getDashboardProgress } from "@/features/measurements/dashboard-progress";
-import { computeMeasurementStats } from "@/features/measurements/stats";
+import { computeMeasurementStats, computeRangeDistribution } from "@/features/measurements/stats";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -23,6 +23,7 @@ export function AnalyticsSummary() {
     () => getDb().measurements.filter((m) => !m.deletedAt).toArray(),
     [],
   );
+  const preferences = useLiveQuery(() => getDb().preferences.get("local"), []);
 
   if (measurements === undefined) {
     return (
@@ -54,6 +55,7 @@ export function AnalyticsSummary() {
   }
 
   const stats = computeMeasurementStats(measurements);
+  const distribution = computeRangeDistribution(measurements, preferences ?? null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -63,16 +65,39 @@ export function AnalyticsSummary() {
         <StatCard label="Mínimo" value={String(stats.min ?? "—")} unit="mg/dL" />
         <StatCard label="Máximo" value={String(stats.max ?? "—")} unit="mg/dL" />
       </div>
-      <p className="text-xs text-foreground/50">
-        Calculado com {stats.count} medições confirmadas e não excluídas.
-        Como você ainda não configurou uma faixa pessoal em Configurações,
-        os valores não são classificados como abaixo/dentro/acima da
-        faixa.
-      </p>
+
+      {distribution ? (
+        <section aria-labelledby="range-distribution-heading" className="rounded-2xl border border-border bg-surface p-4">
+          <h2 id="range-distribution-heading" className="mb-3 text-sm font-semibold text-foreground">
+            Distribuição em relação à faixa configurada
+          </h2>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="text-xl font-bold text-status-below">{distribution.belowPct}%</p>
+              <p className="text-xs text-foreground/60">Abaixo da faixa</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-status-within">{distribution.withinPct}%</p>
+              <p className="text-xs text-foreground/60">Dentro da faixa</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-status-above">{distribution.abovePct}%</p>
+              <p className="text-xs text-foreground/60">Acima da faixa</p>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <p className="text-xs text-foreground/50">
+          Calculado com {stats.count} medições confirmadas e não excluídas.
+          Como você ainda não configurou uma faixa pessoal em
+          Configurações, os valores não são classificados como
+          abaixo/dentro/acima da faixa.
+        </p>
+      )}
+
       <p className="rounded-xl border border-border bg-surface-muted px-4 py-3 text-xs text-foreground/60">
-        Gráficos de linha temporal e distribuição por faixa ainda não
-        foram implementados — por enquanto, este resumo numérico já usa
-        seus dados reais.
+        Gráficos de linha temporal ainda não foram implementados — por
+        enquanto, este resumo numérico já usa seus dados reais.
       </p>
     </div>
   );

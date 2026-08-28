@@ -1,9 +1,11 @@
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
 import type { MeasurementContext } from "@/features/measurements/constants";
+import { classifyValue, type RangeClassification, type TargetRange } from "@/features/measurements/classify";
 
 export type PeriodFilter = 7 | 30 | 90 | "all" | "custom";
 export type ContextFilter = MeasurementContext | "all";
 export type OriginFilter = "manual" | "ocr" | "all";
+export type RangeFilter = RangeClassification | "all";
 
 export type MeasurementListFilters = {
   period: PeriodFilter;
@@ -13,24 +15,28 @@ export type MeasurementListFilters = {
   customTo?: string;
   context: ContextFilter;
   origin: OriginFilter;
+  /** Só tem efeito quando uma faixa pessoal está configurada. */
+  range: RangeFilter;
 };
 
 export const DEFAULT_MEASUREMENT_FILTERS: MeasurementListFilters = {
   period: 7,
   context: "all",
   origin: "all",
+  range: "all",
 };
 
 /**
- * Filtra medições por período/contexto/origem. Não filtra por faixa
- * (abaixo/dentro/acima) porque essa classificação só existe quando o
- * usuário configura uma faixa pessoal (CLAUDE.md, seção 17, regra 8) —
- * isso ainda não existe no produto.
+ * Filtra medições por período/contexto/origem/faixa. O filtro de faixa
+ * (abaixo/dentro/acima) só tem efeito quando `targetRange` é informado
+ * — sem uma faixa pessoal configurada, não há como classificar
+ * (CLAUDE.md, seção 17, regra 8).
  */
 export function filterMeasurements(
   measurements: GlucoseMeasurement[],
   filters: MeasurementListFilters,
   now: Date = new Date(),
+  targetRange?: TargetRange | null,
 ): GlucoseMeasurement[] {
   return measurements.filter((measurement) => {
     const measuredAt = new Date(measurement.measuredAt);
@@ -49,6 +55,9 @@ export function filterMeasurements(
 
     if (filters.context !== "all" && measurement.context !== filters.context) return false;
     if (filters.origin !== "all" && measurement.source !== filters.origin) return false;
+    if (filters.range !== "all") {
+      if (classifyValue(measurement.valueMgDl, targetRange) !== filters.range) return false;
+    }
     return true;
   });
 }

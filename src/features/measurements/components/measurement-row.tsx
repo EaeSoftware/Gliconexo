@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
 import { MEASUREMENT_CONTEXT_LABELS } from "@/features/measurements/constants";
+import type { RangeClassification } from "@/features/measurements/classify";
+import { ClassificationBadge } from "@/features/measurements/components/classification-badge";
 import { Button } from "@/components/ui/button";
 
 function formatTime(iso: string) {
@@ -14,10 +16,11 @@ function formatTime(iso: string) {
 
 type MeasurementRowProps = {
   measurement: GlucoseMeasurement;
+  classification: RangeClassification | null;
   onDelete: (id: string) => void;
 };
 
-export function MeasurementRow({ measurement, onDelete }: MeasurementRowProps) {
+export function MeasurementRow({ measurement, classification, onDelete }: MeasurementRowProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
@@ -37,6 +40,7 @@ export function MeasurementRow({ measurement, onDelete }: MeasurementRowProps) {
       </Link>
 
       <div className="flex items-center gap-2">
+        {classification ? <ClassificationBadge classification={classification} /> : null}
         <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-foreground/60">
           {measurement.source === "ocr" ? "Câmera" : "Manual"}
         </span>

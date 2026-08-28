@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDb } from "@/lib/db/schema";
 import { measurementRepository } from "@/lib/db/measurement-repository";
+import { classifyValue } from "@/features/measurements/classify";
 import {
   DEFAULT_MEASUREMENT_FILTERS,
   filterMeasurements,
@@ -23,6 +24,7 @@ export function HistoryList() {
     () => getDb().measurements.orderBy("measuredAt").reverse().toArray(),
     [],
   );
+  const preferences = useLiveQuery(() => getDb().preferences.get("local"), []);
 
   if (measurements === undefined) {
     return (
@@ -32,8 +34,11 @@ export function HistoryList() {
     );
   }
 
+  const hasTargetRange = Boolean(
+    preferences?.targetMinMgDl != null && preferences?.targetMaxMgDl != null,
+  );
   const confirmed = measurements.filter((m) => !m.deletedAt);
-  const filtered = filterMeasurements(confirmed, filters);
+  const filtered = filterMeasurements(confirmed, filters, new Date(), preferences ?? null);
   const groups = groupMeasurementsByDay(filtered);
 
   async function handleDelete(id: string) {
@@ -49,7 +54,7 @@ export function HistoryList() {
 
   return (
     <>
-      <HistoryFilters filters={filters} onChange={setFilters} />
+      <HistoryFilters filters={filters} onChange={setFilters} hasTargetRange={hasTargetRange} />
 
       {groups.length === 0 ? (
         confirmed.length === 0 ? (
@@ -80,6 +85,7 @@ export function HistoryList() {
                   <MeasurementRow
                     key={measurement.id}
                     measurement={measurement}
+                    classification={classifyValue(measurement.valueMgDl, preferences ?? null)}
                     onDelete={handleDelete}
                   />
                 ))}

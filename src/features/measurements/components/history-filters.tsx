@@ -10,6 +10,7 @@ import type {
   MeasurementListFilters,
   OriginFilter,
   PeriodFilter,
+  RangeFilter,
 } from "@/features/measurements/filter-measurements";
 
 const PERIODS: { value: PeriodFilter; label: string }[] = [
@@ -18,6 +19,13 @@ const PERIODS: { value: PeriodFilter; label: string }[] = [
   { value: 90, label: "90 dias" },
   { value: "all", label: "Tudo" },
   { value: "custom", label: "Período personalizado" },
+];
+
+const RANGES: { value: RangeFilter; label: string }[] = [
+  { value: "all", label: "Todas as faixas" },
+  { value: "abaixo", label: "Abaixo da faixa" },
+  { value: "dentro", label: "Dentro da faixa" },
+  { value: "acima", label: "Acima da faixa" },
 ];
 
 const ORIGINS: { value: OriginFilter; label: string }[] = [
@@ -29,9 +37,10 @@ const ORIGINS: { value: OriginFilter; label: string }[] = [
 type HistoryFiltersProps = {
   filters: MeasurementListFilters;
   onChange: (filters: MeasurementListFilters) => void;
+  hasTargetRange: boolean;
 };
 
-export function HistoryFilters({ filters, onChange }: HistoryFiltersProps) {
+export function HistoryFilters({ filters, onChange, hasTargetRange }: HistoryFiltersProps) {
   const periodId = useId();
   const contextId = useId();
   const rangeId = useId();
@@ -94,10 +103,18 @@ export function HistoryFilters({ filters, onChange }: HistoryFiltersProps) {
           </label>
           <select
             id={rangeId}
-            disabled
-            className="min-h-11 rounded-lg border border-border bg-surface-muted px-3 text-sm text-foreground/50"
+            disabled={!hasTargetRange}
+            className={`min-h-11 rounded-lg border border-border px-3 text-sm ${
+              hasTargetRange ? "bg-surface" : "bg-surface-muted text-foreground/50"
+            }`}
+            value={filters.range}
+            onChange={(event) => onChange({ ...filters, range: event.target.value as RangeFilter })}
           >
-            <option>Todas as faixas</option>
+            {RANGES.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -122,10 +139,12 @@ export function HistoryFilters({ filters, onChange }: HistoryFiltersProps) {
         </div>
       </div>
 
-      <p className="text-xs text-foreground/50">
-        O filtro por faixa fica disponível quando você configurar sua faixa
-        pessoal em Configurações.
-      </p>
+      {!hasTargetRange ? (
+        <p className="text-xs text-foreground/50">
+          O filtro por faixa fica disponível quando você configurar sua
+          faixa pessoal em Configurações.
+        </p>
+      ) : null}
 
       {filters.period === "custom" ? (
         <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2">

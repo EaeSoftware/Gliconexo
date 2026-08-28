@@ -11,6 +11,8 @@ import {
   MEAL_RELATION_LABELS,
 } from "@/features/measurements/constants";
 import { ManualEntryForm } from "@/features/measurements/components/manual-entry-form";
+import { classifyValue } from "@/features/measurements/classify";
+import { ClassificationBadge } from "@/features/measurements/components/classification-badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/feedback/empty-state";
 
@@ -37,6 +39,7 @@ export function MeasurementDetail({ id }: { id: string }) {
     async () => (await getDb().measurements.get(id)) ?? null,
     [id],
   );
+  const preferences = useLiveQuery(() => getDb().preferences.get("local"), []);
 
   if (measurement === undefined) {
     return (
@@ -86,12 +89,17 @@ export function MeasurementDetail({ id }: { id: string }) {
     );
   }
 
+  const classification = classifyValue(measurement.valueMgDl, preferences ?? null);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-border bg-surface p-5">
-        <p className="text-3xl font-bold text-foreground">
-          {measurement.valueMgDl} <span className="text-lg font-normal text-foreground/60">mg/dL</span>
-        </p>
+        <div className="flex flex-wrap items-baseline gap-3">
+          <p className="text-3xl font-bold text-foreground">
+            {measurement.valueMgDl} <span className="text-lg font-normal text-foreground/60">mg/dL</span>
+          </p>
+          {classification ? <ClassificationBadge classification={classification} /> : null}
+        </div>
         <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-foreground/50">Data e horário</dt>

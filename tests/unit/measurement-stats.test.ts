@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeMeasurementStats } from "@/features/measurements/stats";
+import { computeMeasurementStats, computeRangeDistribution } from "@/features/measurements/stats";
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
 
 function makeMeasurement(overrides: Partial<GlucoseMeasurement>): GlucoseMeasurement {
@@ -52,5 +52,32 @@ describe("computeMeasurementStats", () => {
     ];
 
     expect(computeMeasurementStats(measurements).last?.id).toBe("newest");
+  });
+});
+
+describe("computeRangeDistribution", () => {
+  const range = { targetMinMgDl: 70, targetMaxMgDl: 180 };
+
+  it("retorna null sem faixa configurada", () => {
+    const measurements = [makeMeasurement({ valueMgDl: 100 })];
+    expect(computeRangeDistribution(measurements, null)).toBeNull();
+    expect(computeRangeDistribution(measurements, {})).toBeNull();
+  });
+
+  it("retorna null para lista vazia mesmo com faixa configurada", () => {
+    expect(computeRangeDistribution([], range)).toBeNull();
+  });
+
+  it("calcula os percentuais abaixo/dentro/acima", () => {
+    const measurements = [
+      makeMeasurement({ id: "a", valueMgDl: 60 }), // abaixo
+      makeMeasurement({ id: "b", valueMgDl: 120 }), // dentro
+      makeMeasurement({ id: "c", valueMgDl: 150 }), // dentro
+      makeMeasurement({ id: "d", valueMgDl: 200 }), // acima
+    ];
+
+    const distribution = computeRangeDistribution(measurements, range);
+
+    expect(distribution).toEqual({ belowPct: 25, withinPct: 50, abovePct: 25 });
   });
 });

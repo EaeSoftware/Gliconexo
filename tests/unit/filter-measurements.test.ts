@@ -39,7 +39,7 @@ describe("filterMeasurements", () => {
   });
 
   it("mantém tudo quando o período é 'all'", () => {
-    const filters: MeasurementListFilters = { period: "all", context: "all", origin: "all" };
+    const filters: MeasurementListFilters = { period: "all", context: "all", origin: "all", range: "all" };
     const result = filterMeasurements(list, filters, NOW);
     expect(result).toHaveLength(2);
   });
@@ -51,7 +51,7 @@ describe("filterMeasurements", () => {
     ];
     const result = filterMeasurements(
       withContext,
-      { period: "all", context: "jejum", origin: "all" },
+      { period: "all", context: "jejum", origin: "all", range: "all" },
       NOW,
     );
     expect(result.map((m) => m.id)).toEqual(["jejum"]);
@@ -64,7 +64,14 @@ describe("filterMeasurements", () => {
 
     const result = filterMeasurements(
       [inRange, before, after],
-      { period: "custom", customFrom: "2026-08-10", customTo: "2026-08-20", context: "all", origin: "all" },
+      {
+        period: "custom",
+        customFrom: "2026-08-10",
+        customTo: "2026-08-20",
+        context: "all",
+        origin: "all",
+        range: "all",
+      },
       NOW,
     );
 
@@ -78,10 +85,44 @@ describe("filterMeasurements", () => {
     ];
     const result = filterMeasurements(
       withOrigin,
-      { period: "all", context: "all", origin: "ocr" },
+      { period: "all", context: "all", origin: "ocr", range: "all" },
       NOW,
     );
     expect(result.map((m) => m.id)).toEqual(["ocr-1"]);
+  });
+
+  it("filtra por faixa quando uma faixa pessoal está configurada", () => {
+    const withValues = [
+      makeMeasurement({ id: "low", valueMgDl: 60 }),
+      makeMeasurement({ id: "mid", valueMgDl: 120 }),
+      makeMeasurement({ id: "high", valueMgDl: 200 }),
+    ];
+    const targetRange = { targetMinMgDl: 70, targetMaxMgDl: 180 };
+
+    const result = filterMeasurements(
+      withValues,
+      { period: "all", context: "all", origin: "all", range: "acima" },
+      NOW,
+      targetRange,
+    );
+
+    expect(result.map((m) => m.id)).toEqual(["high"]);
+  });
+
+  it("não filtra por faixa quando nenhuma faixa foi configurada", () => {
+    const withValues = [
+      makeMeasurement({ id: "low", valueMgDl: 60 }),
+      makeMeasurement({ id: "high", valueMgDl: 200 }),
+    ];
+
+    const result = filterMeasurements(
+      withValues,
+      { period: "all", context: "all", origin: "all", range: "acima" },
+      NOW,
+      null,
+    );
+
+    expect(result).toHaveLength(0);
   });
 });
 

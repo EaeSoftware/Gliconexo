@@ -132,9 +132,11 @@ valor/horário/contexto, um selo "Manual" ou "Câmera", e um selo
 Exclusão com confirmação inline por linha, e uma barra "Medição
 excluída · Desfazer" por ~6 segundos antes de a exclusão lógica ser
 considerada definitiva (`measurementRepository.remove`/`restore`),
-conforme CLAUDE.md 10.9. **O que falta:** o filtro "Faixa" existe na UI
-mas fica desabilitado — só filtra de verdade quando houver uma faixa
-pessoal configurada (ainda não existe).
+conforme CLAUDE.md 10.9. Quando uma faixa pessoal está configurada (ver
+Configurações), cada linha também mostra um selo "Abaixo"/"Dentro"/
+"Acima" (texto + ícone + cor, nunca só cor) e o filtro "Faixa" passa a
+funcionar de verdade; sem faixa configurada, o filtro fica desabilitado
+com uma explicação.
 
 ### `/app/historico/[id]` — Detalhe da medição
 **Arquivo:** `src/app/(protected)/app/historico/[id]/page.tsx` · **Componente:** `MeasurementDetail` (`src/features/measurements/components/measurement-detail.tsx`) · **Status:** ✅ Funcional (dados locais reais)
@@ -148,6 +150,8 @@ o dado é local (IndexedDB), então o servidor nunca teria como saber se
 existe. Modo "Editar" reaproveita o `ManualEntryForm` (preserva a
 origem original, incrementa `version`/`updatedAt`), e "Excluir" pede
 confirmação antes de fazer a exclusão lógica e voltar ao histórico.
+Também mostra o selo de classificação abaixo/dentro/acima quando há
+faixa configurada.
 
 ### `/app/analises` — Análises
 **Arquivo:** `src/app/(protected)/app/analises/page.tsx` · **Componente:** `AnalyticsSummary` (`src/features/measurements/components/analytics-summary.tsx`) · **Status:** 🟡 Parcial
@@ -156,10 +160,12 @@ Com menos de 4 medições confirmadas, mostra o estado bloqueado com o
 número real de medições restantes (`getDashboardProgress`). A partir da
 4ª, mostra um resumo numérico real (última medição, média, mínimo,
 máximo — `computeMeasurementStats`, com testes unitários), calculado
-sobre os dados do IndexedDB. **O que falta:** gráficos (linha temporal,
-distribuição por faixa, tabela por contexto) ainda não existem — isso é
-Fase 6 — e a classificação abaixo/dentro/acima da faixa depende de uma
-faixa pessoal configurada, que também não existe ainda.
+sobre os dados do IndexedDB. Quando há uma faixa pessoal configurada,
+mostra também os percentuais reais de medições abaixo/dentro/acima da
+faixa (`computeRangeDistribution`, testado); sem faixa configurada,
+mostra a explicação de que a classificação depende disso, em vez de
+inventar um percentual. **O que falta:** gráficos de fato (linha
+temporal, tabela por contexto) — isso é Fase 6.
 
 ### `/app/relatorios` — Relatórios
 **Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Componente:** `ReportsStatus` (`src/features/measurements/components/reports-status.tsx`) · **Status:** ⚪ Placeholder (honesto sobre haver ou não dados)
@@ -175,7 +181,7 @@ geração de PDF/CSV em si é Fase 7.
 
 - **Aparência** — ✅ `ThemeToggle` alterna de verdade entre claro/escuro/sistema, persiste em `localStorage` e evita flash incorreto no carregamento (`ThemeScript` no `<head>`).
 - **Instalar aplicativo** — ✅ `InstallPwaButton` usa o evento real `beforeinstallprompt`; se o app já estiver instalado, mostra uma mensagem em vez do botão; no iOS, mostra a instrução manual de "Adicionar à Tela de Início".
-- **Faixa pessoal de glicemia** — ⚪ só texto explicando o que vai existir.
+- **Faixa pessoal de glicemia** — ✅ `TargetRangeForm` (`src/features/preferences/components/target-range-form.tsx`) salva mínimo/máximo de verdade no IndexedDB (`preferencesRepository`, tabela `preferences`). Validação exige os dois valores juntos (ou nenhum) e mínimo &lt; máximo (`targetRangeSchema`, testado). Assim que salva, os selos de classificação e os percentuais em Histórico/Análises passam a considerar essa faixa — sem prometer nenhuma recomendação médica, só a informação.
 - **Sincronização** — ⚪ só texto explicando o que vai existir.
 - **Privacidade e dados** — ⚪ botões "Exportar dados" / "Excluir conta" ficam desabilitados de propósito (`disabled`), com link para `/app/privacidade`.
 - **Sobre** — ✅ mostra a versão do app e links para as políticas públicas.
@@ -210,20 +216,27 @@ Desde esta etapa, `/app`, `/app/registrar`, `/app/historico`,
 de verdade em um banco local no navegador, via
 [Dexie](https://dexie.org):
 
-- `src/lib/db/schema.ts` — a classe `GlicoNexoDB` (uma tabela
-  `measurements` por enquanto) e o tipo `StoredMeasurement`.
+- `src/lib/db/schema.ts` — a classe `GlicoNexoDB`, com as tabelas
+  `measurements` e `preferences`, e os tipos `StoredMeasurement`/
+  `StoredPreferences`.
 - `src/lib/db/measurement-repository.ts` — implementação local da
   interface `MeasurementRepository` sugerida em `CLAUDE.md` (seção 6):
   `list`, `getById`, `create`, `update`, `remove` (exclusão lógica via
   `deletedAt`), mais um `restore` para o "desfazer" da UI.
-- `src/features/measurements/filter-measurements.ts` e
-  `src/features/measurements/stats.ts` — funções puras (testadas em
-  `tests/unit/`) para filtrar/agrupar/calcular estatísticas, mantendo
-  essa lógica fora dos componentes visuais.
+- `src/lib/db/preferences-repository.ts` — guarda a faixa pessoal de
+  glicemia (`targetMinMgDl`/`targetMaxMgDl`) como um único registro
+  local (`id: "local"`), já que ainda não há usuário autenticado.
+- `src/features/measurements/filter-measurements.ts`,
+  `src/features/measurements/stats.ts` e
+  `src/features/measurements/classify.ts` — funções puras (testadas em
+  `tests/unit/`) para filtrar/agrupar/classificar/calcular estatísticas,
+  mantendo essa lógica fora dos componentes visuais.
 
 Isso é só o dispositivo atual: **nada é enviado para o Supabase ainda**
 (fila de sincronização é Fase 4), e por isso todo registro aparece com o
-selo "Pendente" no histórico.
+selo "Pendente" no histórico. A faixa pessoal também é só local — na
+Fase 2, ela vai migrar para `user_preferences` no Supabase (ver
+`docs/database.md`).
 
 ## Como isso se encaixa nas fases do `CLAUDE.md`
 

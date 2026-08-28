@@ -33,13 +33,30 @@ export interface StoredMeasurement {
   deletedAt?: string;
 }
 
+/**
+ * Preferências locais do usuário (subconjunto de `user_preferences`,
+ * CLAUDE.md seção 11.2). Registro único por dispositivo enquanto não
+ * houver autenticação — `id` é sempre `"local"`.
+ */
+export interface StoredPreferences {
+  id: "local";
+  targetMinMgDl?: number;
+  targetMaxMgDl?: number;
+  updatedAt: string;
+}
+
 class GlicoNexoDB extends Dexie {
   measurements!: EntityTable<StoredMeasurement, "id">;
+  preferences!: EntityTable<StoredPreferences, "id">;
 
   constructor() {
     super("gliconexo");
     this.version(1).stores({
       measurements: "id, measuredAt, updatedAt, deletedAt, context, source",
+    });
+    // Aditivo: mantém a tabela `measurements` da versão 1 intacta.
+    this.version(2).stores({
+      preferences: "id",
     });
   }
 }

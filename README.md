@@ -33,9 +33,15 @@ plano descrito em `CLAUDE.md`, seção 21:
   `Histórico/[id]` e o resumo numérico de `Análises` já usam esses dados
   reais — ver [`docs/telas.md`](./docs/telas.md) para o detalhe tela a
   tela.
+- ✅ **Faixa pessoal de glicemia** configurável em Configurações, também
+  salva localmente: quando configurada, o histórico e as análises
+  passam a classificar cada medição como abaixo/dentro/acima da faixa
+  (texto + ícone, nunca só cor) e a mostrar os percentuais reais — sem
+  faixa configurada, nada é classificado (CLAUDE.md, seção 17, regra 8).
 - ✅ Testes unitários (Vitest) para os schemas Zod, a regra das quatro
-  medições, os filtros/agrupamento de histórico e o repositório
-  IndexedDB (com `fake-indexeddb`) — 33 testes, todos passando.
+  medições, os filtros/agrupamento/classificação de histórico e os
+  repositórios IndexedDB (com `fake-indexeddb`) — 53 testes, todos
+  passando.
 
 **Ainda não implementado** (fases seguintes do `CLAUDE.md`, seção 21):
 

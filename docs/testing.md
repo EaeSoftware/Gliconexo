@@ -20,17 +20,20 @@ npm run build         # build de produção (também roda checagem de tipos)
 | `tests/unit/auth-schema.test.ts` | Schemas de cadastro/login: senhas coincidentes, tamanho mínimo de senha, aceite de termos obrigatório, e-mail inválido. |
 | `tests/unit/dashboard-progress.test.ts` | Regra de negócio "dashboard liberado a partir da 4ª medição confirmada" (`CLAUDE.md`, seção 17, regra 3). |
 | `tests/unit/theme-constants.test.ts` | Guard de tipo para a preferência de tema (`light`/`dark`/`system`). |
-| `tests/unit/filter-measurements.test.ts` | Filtro por período (fixo e personalizado), contexto e origem; agrupamento por dia local. |
-| `tests/unit/measurement-stats.test.ts` | Cálculo de média/mínimo/máximo/última medição a partir de uma lista de medições. |
+| `tests/unit/filter-measurements.test.ts` | Filtro por período (fixo e personalizado), contexto, origem e faixa; agrupamento por dia local. |
+| `tests/unit/measurement-stats.test.ts` | Cálculo de média/mínimo/máximo/última medição e distribuição percentual abaixo/dentro/acima da faixa. |
+| `tests/unit/classify.test.ts` | Classificação de um valor em relação à faixa pessoal (`null` sem faixa configurada, limites inclusivos). |
+| `tests/unit/target-range-schema.test.ts` | Schema Zod da faixa pessoal: os dois valores juntos ou nenhum, mínimo &lt; máximo, intervalo 1–999. |
 | `tests/unit/measurement-repository.test.ts` | `MeasurementRepository` sobre IndexedDB real (via `fake-indexeddb`): criar, listar (ignorando excluídos), editar com incremento de versão, exclusão lógica e `restore`. |
+| `tests/unit/preferences-repository.test.ts` | `preferencesRepository` sobre IndexedDB real: salvar, recuperar e sobrescrever a faixa pessoal. |
 
 Executado nesta entrega: `npm run lint`, `npm run typecheck` (via
 `tsc --noEmit` e também dentro de `next build`), `npm run build` e
-`npm run test` — todos passando (33 testes, 7 arquivos). Além disso, o
-fluxo completo (registrar → início → histórico → análises → editar →
-excluir → desfazer) foi exercitado manualmente com Playwright contra o
-build de produção, sem erros de console/página — ver capturas de tela
-enviadas na conversa.
+`npm run test` — todos passando (53 testes, 10 arquivos). Além disso, os
+fluxos completos (registrar → início → histórico → análises → editar →
+excluir → desfazer; e configurar faixa → ver classificação → filtrar por
+faixa → ver percentuais em análises) foram exercitados manualmente com
+Playwright contra o build de produção, sem erros de console/página.
 
 ## O que ainda não existe
 

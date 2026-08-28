@@ -1,4 +1,5 @@
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
+import { classifyValue, type TargetRange } from "@/features/measurements/classify";
 
 export type MeasurementStats = {
   count: number;
@@ -31,5 +32,45 @@ export function computeMeasurementStats(measurements: GlucoseMeasurement[]): Mea
     min: Math.min(...values),
     max: Math.max(...values),
     last,
+  };
+}
+
+export type RangeDistribution = {
+  belowPct: number;
+  withinPct: number;
+  abovePct: number;
+};
+
+/**
+ * Percentual de medições abaixo/dentro/acima da faixa pessoal
+ * configurada. Retorna `null` quando não há faixa configurada, ou
+ * quando não há medições — a faixa é uma preferência informativa do
+ * usuário, nunca inventada pelo aplicativo (CLAUDE.md, seção 17, regra 8).
+ */
+export function computeRangeDistribution(
+  measurements: GlucoseMeasurement[],
+  targetRange: TargetRange | null | undefined,
+): RangeDistribution | null {
+  if (!targetRange || targetRange.targetMinMgDl == null || targetRange.targetMaxMgDl == null) {
+    return null;
+  }
+  if (measurements.length === 0) return null;
+
+  let below = 0;
+  let within = 0;
+  let above = 0;
+
+  for (const measurement of measurements) {
+    const classification = classifyValue(measurement.valueMgDl, targetRange);
+    if (classification === "abaixo") below += 1;
+    else if (classification === "acima") above += 1;
+    else within += 1;
+  }
+
+  const total = measurements.length;
+  return {
+    belowPct: Math.round((below / total) * 100),
+    withinPct: Math.round((within / total) * 100),
+    abovePct: Math.round((above / total) * 100),
   };
 }

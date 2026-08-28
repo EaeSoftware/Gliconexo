@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { InstallPwaButton } from "@/components/pwa/install-button";
+import { TargetRangeForm } from "@/features/preferences/components/target-range-form";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -35,14 +36,7 @@ export default function ConfiguracoesPage() {
       </SettingsSection>
 
       <SettingsSection title="Faixa pessoal de glicemia">
-        <p className="text-sm text-foreground/70">
-          Defina os limites que refletem a orientação do seu profissional de
-          saúde. Essa faixa é uma preferência informativa, não uma
-          recomendação médica do aplicativo.
-        </p>
-        <p className="mt-3 text-sm font-medium text-foreground/50">
-          Disponível em uma próxima etapa do desenvolvimento.
-        </p>
+        <TargetRangeForm />
       </SettingsSection>
 
       <SettingsSection title="Sincronização">
