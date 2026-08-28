@@ -66,6 +66,11 @@ npm run typecheck  # checagem de tipos (tsc --noEmit)
 npm run test         # testes unitários (Vitest)
 ```
 
+## Documentação de cada tela
+
+Para saber exatamente o que cada tela faz hoje — o que já é real e o que
+ainda é placeholder — veja [`docs/telas.md`](./docs/telas.md).
+
 ## Configurar o Supabase
 
 O projeto ainda **não está conectado a um projeto Supabase real**. Quando o
