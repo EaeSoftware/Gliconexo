@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { InstallPwaButton } from "@/components/pwa/install-button";
 import { TargetRangeForm } from "@/features/preferences/components/target-range-form";
 import { ExportAllDataButton } from "@/features/privacy/components/export-all-data-button";
+import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Configurações" };
@@ -72,6 +73,10 @@ export default function ConfiguracoesPage() {
             Termos de uso
           </Link>
         </div>
+      </SettingsSection>
+
+      <SettingsSection title="Conta">
+        <SignOutButton />
       </SettingsSection>
     </div>
   );
