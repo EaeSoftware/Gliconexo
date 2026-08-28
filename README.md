@@ -17,31 +17,45 @@ A especificação completa do produto está em [`CLAUDE.md`](./CLAUDE.md).
 
 ## Status atual do desenvolvimento
 
-Esta primeira entrega cobre a **Fase 0 (auditoria)** e a **Fase 1 (base do
-projeto)** do plano descrito em `CLAUDE.md`, seção 21:
+Esta entrega cobre a **Fase 0 (auditoria)**, a **Fase 1 (base do
+projeto)** e boa parte da **Fase 3 (registro manual e histórico)** do
+plano descrito em `CLAUDE.md`, seção 21:
 
 - ✅ Scaffold Next.js (App Router) + TypeScript estrito + Tailwind CSS v4.
 - ✅ Identidade visual GlicoNexo (logo, ícones PWA, paleta, tema claro/escuro/sistema).
 - ✅ Rotas públicas: página inicial, entrar, cadastro, recuperar senha, privacidade, termos.
 - ✅ Onboarding (4 passos) e casca do app protegido (`/app/*`) com navegação inferior (mobile) e sidebar (desktop).
-- ✅ Formulário de registro manual de medição, com validação Zod compartilhável entre OCR e manual.
-- ✅ Cliente Supabase (browser e servidor) preparado para autenticação — **ainda não conectado a um projeto Supabase real**.
+- ✅ Cliente Supabase (browser e servidor) preparado para autenticação — **ainda não conectado a um projeto Supabase real** (pendência de produto, ver abaixo).
 - ✅ Manifest da PWA, ícones e botão de instalação.
-- ✅ Testes unitários (Vitest) para os schemas Zod e para a regra das quatro medições.
+- ✅ **Persistência local real (IndexedDB via Dexie):** registrar, editar,
+  excluir (com "desfazer") e listar/filtrar medições já funciona de
+  ponta a ponta, salvando no navegador. `Início`, `Histórico`,
+  `Histórico/[id]` e o resumo numérico de `Análises` já usam esses dados
+  reais — ver [`docs/telas.md`](./docs/telas.md) para o detalhe tela a
+  tela.
+- ✅ Testes unitários (Vitest) para os schemas Zod, a regra das quatro
+  medições, os filtros/agrupamento de histórico e o repositório
+  IndexedDB (com `fake-indexeddb`) — 33 testes, todos passando.
 
 **Ainda não implementado** (fases seguintes do `CLAUDE.md`, seção 21):
 
-- Banco de dados, migrations, RLS e autenticação real (Fase 2).
-- Persistência local (IndexedDB/Dexie), fila de sincronização offline e CRUD de medições (Fase 3–4).
+- Banco de dados remoto, migrations, RLS e autenticação real (Fase 2) —
+  **bloqueado por decisão de produto**: será usada uma conta
+  Supabase/Vercel própria, ainda não criada/informada (ver "Configurar o
+  Supabase" abaixo).
+- Fila de sincronização offline↔nuvem (Fase 4) — por isso todo registro
+  aparece com o selo "Pendente" no histórico, e os dados não saem do
+  dispositivo atual.
 - Captura por câmera e OCR (Tesseract.js) (Fase 5).
-- Gráficos e indicadores do dashboard (Fase 6).
+- Gráficos (linha temporal, distribuição por faixa) do dashboard — o
+  resumo numérico (média/mín/máx) já é real, os gráficos em si são
+  Fase 6.
 - Geração de PDF/CSV e exclusão de conta (Fase 7).
 - Service worker com estratégia de cache e testes cross-browser (Fase 8).
 
-As telas do app protegido (histórico, análises, relatórios, configurações)
-já existem com layout, filtros e estados vazios reais, mas ainda sem dados
-persistidos — os pontos pendentes estão marcados com `TODO (Fase N)` no
-código.
+Os pontos pendentes estão marcados com `TODO (Fase N)` no código onde
+fizer sentido, e documentados tela a tela em
+[`docs/telas.md`](./docs/telas.md).
 
 ## Como rodar localmente
 
@@ -129,11 +143,12 @@ src/
     auth/, legal/, feedback/, pwa/
   features/
     auth/                schemas e formulários de autenticação
-    measurements/       schemas, constantes e formulário de registro manual
+    measurements/       schemas, componentes, filtros/estatísticas puras (testados)
     onboarding/           conteúdo dos 4 passos
     navigation/         itens do menu
   lib/
     supabase/            clientes Supabase (browser/servidor)
+    db/                  IndexedDB local (Dexie): schema + MeasurementRepository
     theme/, offline/, pwa/  hooks utilitários
 public/
   icons/                ícones da PWA (192, 512, maskable, apple-touch)
@@ -160,7 +175,12 @@ para garantir fidelidade total à marca.
   Supabase" acima. Nenhuma autenticação real está ativa: os formulários
   de entrar/cadastro chamam o SDK do Supabase, mas falharão graciosamente
   até haver um projeto configurado.
-- Não há service worker/offline real, apenas o manifest da PWA.
+- Medições já são persistidas de verdade, mas **só neste dispositivo**:
+  não há sincronização com nuvem, escopo por usuário nem limpeza no
+  logout (não existe logout real ainda).
+- Não há service worker/offline real, apenas o manifest da PWA — os
+  dados locais funcionam offline, mas o app em si depende da rede para
+  carregar o HTML/JS na primeira visita.
 - Textos de privacidade e termos são rascunhos e estão marcados como
   pendentes de revisão jurídica.
 - Nenhuma validação clínica, jurídica ou de usabilidade foi realizada.

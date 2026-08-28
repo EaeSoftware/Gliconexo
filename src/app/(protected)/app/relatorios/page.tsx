@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EmptyState } from "@/components/feedback/empty-state";
+import { ReportsStatus } from "@/features/measurements/components/reports-status";
 
 export const metadata: Metadata = { title: "Relatórios" };
 
@@ -11,13 +11,7 @@ export default function RelatoriosPage() {
         Exporte suas medições em PDF ou CSV para uso pessoal ou
         compartilhamento com um profissional de saúde.
       </p>
-
-      {/* TODO (Fase 7): geração de PDF/CSV a partir dos dados reais e filtros confirmados. */}
-      <EmptyState
-        icon="🗎"
-        title="Nenhum dado para exportar ainda"
-        description="Assim que você tiver medições registradas, poderá escolher um período e exportar em PDF ou CSV."
-      />
+      <ReportsStatus />
     </div>
   );
 }

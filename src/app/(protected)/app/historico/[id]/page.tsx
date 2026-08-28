@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { MeasurementDetail } from "@/features/measurements/components/measurement-detail";
 
 export const metadata: Metadata = { title: "Detalhe da medição" };
 
 export default async function HistoricoDetalhePage(
   props: PageProps<"/app/historico/[id]">,
 ) {
-  await props.params;
+  const { id } = await props.params;
 
-  // TODO (Fase 3): buscar a medição real no repositório local/Supabase pelo id.
-  // Sem uma fonte de dados ainda implementada, nenhum id corresponde a um registro real.
-  notFound();
+  return (
+    <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6">
+      <MeasurementDetail id={id} />
+    </div>
+  );
 }

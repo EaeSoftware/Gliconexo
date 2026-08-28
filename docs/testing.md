@@ -20,23 +20,32 @@ npm run build         # build de produção (também roda checagem de tipos)
 | `tests/unit/auth-schema.test.ts` | Schemas de cadastro/login: senhas coincidentes, tamanho mínimo de senha, aceite de termos obrigatório, e-mail inválido. |
 | `tests/unit/dashboard-progress.test.ts` | Regra de negócio "dashboard liberado a partir da 4ª medição confirmada" (`CLAUDE.md`, seção 17, regra 3). |
 | `tests/unit/theme-constants.test.ts` | Guard de tipo para a preferência de tema (`light`/`dark`/`system`). |
+| `tests/unit/filter-measurements.test.ts` | Filtro por período (fixo e personalizado), contexto e origem; agrupamento por dia local. |
+| `tests/unit/measurement-stats.test.ts` | Cálculo de média/mínimo/máximo/última medição a partir de uma lista de medições. |
+| `tests/unit/measurement-repository.test.ts` | `MeasurementRepository` sobre IndexedDB real (via `fake-indexeddb`): criar, listar (ignorando excluídos), editar com incremento de versão, exclusão lógica e `restore`. |
 
 Executado nesta entrega: `npm run lint`, `npm run typecheck` (via
 `tsc --noEmit` e também dentro de `next build`), `npm run build` e
-`npm run test` — todos passando (18 testes, 4 arquivos).
+`npm run test` — todos passando (33 testes, 7 arquivos). Além disso, o
+fluxo completo (registrar → início → histórico → análises → editar →
+excluir → desfazer) foi exercitado manualmente com Playwright contra o
+build de produção, sem erros de console/página — ver capturas de tela
+enviadas na conversa.
 
 ## O que ainda não existe
 
 A suíte completa descrita em `CLAUDE.md` (seção 19) depende de
 funcionalidades que ainda não foram implementadas:
 
-- **Componentes**: formulário manual e confirmação OCR já existem como
-  componentes (`ManualEntryForm`, `RegisterTabs`), mas ainda não têm
-  testes de renderização/interação com Testing Library — recomendado
-  antes da Fase 3, quando a persistência for adicionada e o
-  comportamento passar a ter efeitos reais para testar.
-- **Integração**: Auth + criação de perfil, CRUD de medição, RLS entre
-  dois usuários, IndexedDB + outbox — dependem das Fases 2–4.
+- **Componentes**: `ManualEntryForm`, `RegisterTabs`, `HistoryList` e
+  `MeasurementDetail` já têm comportamento real (persistem no
+  IndexedDB), mas ainda não têm testes de renderização/interação com
+  Testing Library — só a lógica pura que eles usam
+  (`filter-measurements`, `stats`, `dashboard-progress`) está coberta
+  até aqui.
+- **Integração**: Auth + criação de perfil, RLS entre dois usuários,
+  outbox de sincronização — dependem das Fases 2 e 4. O CRUD de medição
+  em si já tem cobertura via `measurement-repository.test.ts`.
 - **E2E (Playwright)**: fluxo completo de cadastro → onboarding → 4
   medições → dashboard → OCR → exportação — depende das Fases 2–7.
   Nenhuma dependência de câmera física deve ser usada no CI; a fixture de

@@ -91,15 +91,15 @@ ainda** — a proteção de fato (redirecionar quem não está logado) é
 trabalho da Fase 2, junto da autenticação.
 
 ### `/app` — Início
-**Arquivo:** `src/app/(protected)/app/page.tsx` · **Status:** 🟡 Parcial (UI real, dado fixo em zero)
+**Arquivo:** `src/app/(protected)/app/page.tsx` · **Componente:** `HomeDashboard` (`src/features/measurements/components/home-dashboard.tsx`) · **Status:** ✅ Funcional (dados locais reais)
 
 Saudação, botão grande "Registrar glicemia", card de progresso "X de 4
-medições registradas" (regra de negócio real e testada em
-`getDashboardProgress`, `src/features/measurements/dashboard-progress.ts`),
-card de "última medição" e atalho para o histórico. Hoje
-`confirmedMeasurementsCount` está fixo em `0` no código
-(`TODO (Fase 3/4)`) porque ainda não existe fonte de dados — assim que o
-repositório local existir, é só trocar essa linha pela contagem real.
+medições registradas" (regra real e testada em `getDashboardProgress`) e
+card de "última medição" — ambos agora lêem de verdade o IndexedDB local
+via `useLiveQuery` (Dexie), então a tela atualiza sozinha assim que uma
+medição é criada/editada/excluída em qualquer outra aba/tela. **O que
+ainda falta:** isso é só o dispositivo atual — sem sincronização com o
+Supabase (Fase 4), o mesmo histórico não aparece em outro aparelho.
 
 ### `/app/registrar` — Registrar medição
 **Arquivo:** `src/app/(protected)/app/registrar/page.tsx` · **Componente:** `RegisterTabs` (`src/features/measurements/components/register-tabs.tsx`) · **Status:** 🟡 Parcial
@@ -109,47 +109,66 @@ Duas abas, como pede a especificação:
 - **📷 Usar câmera** — ⚪ mostra um card "chega em breve", explicando que
   por enquanto deve-se usar a entrada manual (a captura por câmera + OCR
   é Fase 5).
-- **⌨️ Digitar valor** — 🟡 formulário completo (`ManualEntryForm`,
+- **⌨️ Digitar valor** — ✅ formulário completo (`ManualEntryForm`,
   `src/features/measurements/components/manual-entry-form.tsx`): valor em
   mg/dL (validação 1–999, inteiro), data/hora pré-preenchida e editável,
   contexto (jejum, café da manhã, almoço, etc.), relação com a refeição,
-  observação opcional. Ao confirmar, mostra uma tela de confirmação com o
-  valor — mas **não salva em lugar nenhum ainda**: o texto da própria
-  tela avisa isso ao usuário ("o armazenamento local... será habilitado
-  em uma próxima etapa"), em vez de fingir que salvou.
+  observação opcional. Ao confirmar, **salva de verdade no IndexedDB**
+  (`measurementRepository.create`, via Dexie) com UUID gerado no
+  cliente, e mostra uma tela de confirmação com atalhos para "Registrar
+  outra" ou "Ver histórico". Ainda não sincroniza com a nuvem — o texto
+  da confirmação avisa isso.
 
 ### `/app/historico` — Histórico
-**Arquivo:** `src/app/(protected)/app/historico/page.tsx` · **Componente:** `HistoryFilters` · **Status:** 🟡 Parcial (filtros reais na UI, sem dado para filtrar)
+**Arquivo:** `src/app/(protected)/app/historico/page.tsx` · **Componente:** `HistoryList` (`src/features/measurements/components/history-list.tsx`) · **Status:** ✅ Funcional (dados locais reais)
 
-Barra de filtros com os 4 campos da especificação (período: 7/30/90
-dias/personalizado; contexto; faixa abaixo/dentro/acima; origem
-manual/câmera) — os `<select>` já existem e são navegáveis, mas ainda
-não filtram nada porque não há lista de medições. Abaixo, um estado
-vazio real ("Nenhuma medição encontrada") com botão para ir registrar.
+Lista as medições reais do dispositivo, agrupadas por dia
+(`groupMeasurementsByDay`), mais recentes primeiro, atualizando ao vivo
+via `useLiveQuery`. Filtros funcionais de período (7/30/90 dias, tudo, ou
+personalizado com dois campos de data), contexto e origem
+(`filterMeasurements`, com testes unitários). Cada linha mostra
+valor/horário/contexto, um selo "Manual" ou "Câmera", e um selo
+"Pendente" (ainda não sincronizado — vira "Sincronizado" na Fase 4).
+Exclusão com confirmação inline por linha, e uma barra "Medição
+excluída · Desfazer" por ~6 segundos antes de a exclusão lógica ser
+considerada definitiva (`measurementRepository.remove`/`restore`),
+conforme CLAUDE.md 10.9. **O que falta:** o filtro "Faixa" existe na UI
+mas fica desabilitado — só filtra de verdade quando houver uma faixa
+pessoal configurada (ainda não existe).
 
 ### `/app/historico/[id]` — Detalhe da medição
-**Arquivo:** `src/app/(protected)/app/historico/[id]/page.tsx` · **Status:** ⚪ Placeholder honesto
+**Arquivo:** `src/app/(protected)/app/historico/[id]/page.tsx` · **Componente:** `MeasurementDetail` (`src/features/measurements/components/measurement-detail.tsx`) · **Status:** ✅ Funcional (dados locais reais)
 
-Rota dinâmica já existe e tipa corretamente o `id` da URL, mas como não
-há nenhuma fonte de dados real ainda, ela sempre chama `notFound()` —
-ou seja, mostra a tela padrão "404" do Next.js em vez de fingir exibir
-um registro que não existe. Vira tela de detalhe de verdade na Fase 3.
+Busca a medição real pelo `id` (`useLiveQuery` + `getDb().measurements.get`).
+Se o registro não existir neste dispositivo (id errado, já excluído, ou
+aberto em outro aparelho sem sincronização), mostra um estado "Medição
+não encontrada" com um botão para voltar ao histórico — isso é
+tratado na própria tela em vez de usar `notFound()` do Next.js, porque
+o dado é local (IndexedDB), então o servidor nunca teria como saber se
+existe. Modo "Editar" reaproveita o `ManualEntryForm` (preserva a
+origem original, incrementa `version`/`updatedAt`), e "Excluir" pede
+confirmação antes de fazer a exclusão lógica e voltar ao histórico.
 
 ### `/app/analises` — Análises
-**Arquivo:** `src/app/(protected)/app/analises/page.tsx` · **Status:** ⚪ Placeholder correto
+**Arquivo:** `src/app/(protected)/app/analises/page.tsx` · **Componente:** `AnalyticsSummary` (`src/features/measurements/components/analytics-summary.tsx`) · **Status:** 🟡 Parcial
 
-Como o app real também mostraria (regra: gráficos só a partir da 4ª
-medição confirmada), essa tela hoje sempre exibe o estado "gráficos
-liberados a partir de 4 medições" com um botão para registrar. Isso é o
-comportamento *correto* enquanto não há medições — não é uma
-simplificação temporária, é o mesmo estado que qualquer usuário novo
-veria no produto final.
+Com menos de 4 medições confirmadas, mostra o estado bloqueado com o
+número real de medições restantes (`getDashboardProgress`). A partir da
+4ª, mostra um resumo numérico real (última medição, média, mínimo,
+máximo — `computeMeasurementStats`, com testes unitários), calculado
+sobre os dados do IndexedDB. **O que falta:** gráficos (linha temporal,
+distribuição por faixa, tabela por contexto) ainda não existem — isso é
+Fase 6 — e a classificação abaixo/dentro/acima da faixa depende de uma
+faixa pessoal configurada, que também não existe ainda.
 
 ### `/app/relatorios` — Relatórios
-**Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Status:** ⚪ Placeholder
+**Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Componente:** `ReportsStatus` (`src/features/measurements/components/reports-status.tsx`) · **Status:** ⚪ Placeholder (honesto sobre haver ou não dados)
 
-Explica o que a tela vai fazer (exportar PDF/CSV por período) e mostra
-"Nenhum dado para exportar ainda". A geração de PDF/CSV em si é Fase 7.
+Lê a contagem real de medições. Se não houver nenhuma, mostra "Nenhum
+dado para exportar ainda"; se já houver medições registradas, mostra
+"Exportação ainda não implementada" citando a quantidade real — em vez
+de dizer "nenhum dado" quando na verdade já existem registros. A
+geração de PDF/CSV em si é Fase 7.
 
 ### `/app/configuracoes` — Configurações
 **Arquivo:** `src/app/(protected)/app/configuracoes/page.tsx` · **Status:** 🟡 Parcial — as únicas duas seções realmente funcionais do app protegido
@@ -180,17 +199,42 @@ exportação real (Fase 7 / seção 15 do `CLAUDE.md`).
 | `Button` / `ButtonLink` | `src/components/ui/button.tsx` | Botão padrão do app, 4 variantes (primary/secondary/outline/ghost). |
 | `TextField` | `src/components/ui/text-field.tsx` | Campo de formulário acessível (label real, erro com `role="alert"`, `aria-describedby`). |
 | `EmptyState` | `src/components/feedback/empty-state.tsx` | Estado vazio reutilizável (ícone, título, descrição, ação). |
+| `UndoToast` | `src/components/feedback/undo-toast.tsx` | Barra "excluído · Desfazer" com expiração automática, usada no histórico. |
 | `ConnectionStatus` | `src/components/layout/connection-status.tsx` | Badge Online/Offline em tempo real. |
 | `Sidebar` / `BottomNav` | `src/components/layout/` | Navegação do app protegido, adaptada por breakpoint. |
 
+## Camada de dados local (IndexedDB/Dexie)
+
+Desde esta etapa, `/app`, `/app/registrar`, `/app/historico`,
+`/app/historico/[id]` e `/app/analises` (parcialmente) leem e escrevem
+de verdade em um banco local no navegador, via
+[Dexie](https://dexie.org):
+
+- `src/lib/db/schema.ts` — a classe `GlicoNexoDB` (uma tabela
+  `measurements` por enquanto) e o tipo `StoredMeasurement`.
+- `src/lib/db/measurement-repository.ts` — implementação local da
+  interface `MeasurementRepository` sugerida em `CLAUDE.md` (seção 6):
+  `list`, `getById`, `create`, `update`, `remove` (exclusão lógica via
+  `deletedAt`), mais um `restore` para o "desfazer" da UI.
+- `src/features/measurements/filter-measurements.ts` e
+  `src/features/measurements/stats.ts` — funções puras (testadas em
+  `tests/unit/`) para filtrar/agrupar/calcular estatísticas, mantendo
+  essa lógica fora dos componentes visuais.
+
+Isso é só o dispositivo atual: **nada é enviado para o Supabase ainda**
+(fila de sincronização é Fase 4), e por isso todo registro aparece com o
+selo "Pendente" no histórico.
+
 ## Como isso se encaixa nas fases do `CLAUDE.md`
 
-As colunas 🟡/⚪ acima devem virar ✅ conforme as fases do plano (seção 21)
-forem implementadas: autenticação real (Fase 2) destrava `/entrar`,
-`/cadastro`, `/recuperar-senha` e o `TODO` de consentimento do
-onboarding; IndexedDB + repositório (Fase 3) destrava
-`/app`, `/app/registrar`, `/app/historico` e `/app/historico/[id]`;
-sincronização (Fase 4) destrava o indicador de sincronização em
+Autenticação real (Fase 2) ainda destrava `/entrar`, `/cadastro`,
+`/recuperar-senha` e o `TODO` de consentimento do onboarding —
+bloqueada por decisão do produto até uma conta Supabase/Vercel própria
+ser informada (ver `docs/database.md`). IndexedDB + repositório (Fase 3)
+já destravou `/app`, `/app/registrar`, `/app/historico` e
+`/app/historico/[id]`, como descrito acima. Sincronização (Fase 4)
+ainda vai destravar o selo "Pendente" → "Sincronizado" e o indicador em
 Configurações; OCR (Fase 5) destrava a aba "Usar câmera"; gráficos
-(Fase 6) destravam `/app/analises`; exportação e exclusão de conta
-(Fase 7) destravam `/app/relatorios` e as ações de `/app/privacidade`.
+(Fase 6) destravam os gráficos de `/app/analises` (o resumo numérico já
+está pronto); exportação e exclusão de conta (Fase 7) destravam
+`/app/relatorios` e as ações de `/app/privacidade`.

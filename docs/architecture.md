@@ -20,33 +20,28 @@ flowchart TD
     H --> I[PDF ou CSV]
 ```
 
-## Estado implementado nesta entrega (Fase 1)
-
-Apenas a camada de apresentação e roteamento existe hoje:
+## Estado implementado nesta entrega (Fase 1 + Fase 3 parcial)
 
 - `src/app/(public)/*` — rotas públicas (landing, entrar, cadastro,
   recuperar senha, privacidade, termos).
-- `src/app/onboarding` — fluxo de 4 passos, sem persistência.
+- `src/app/onboarding` — fluxo de 4 passos, sem persistência do aceite.
 - `src/app/(protected)/app/*` — casca do app autenticado, com todas as
   rotas do MVP (`início`, `registrar`, `histórico`, `histórico/[id]`,
   `análises`, `relatórios`, `configurações`, `privacidade`), navegação
   inferior no mobile e sidebar no desktop.
 - `src/lib/supabase/client.ts` e `src/lib/supabase/server.ts` — clientes
   Supabase (browser/servidor) usando `@supabase/ssr`, prontos para receber
-  credenciais reais.
-- `src/features/measurements/schemas.ts` — schema Zod único, pensado para
-  ser compartilhado entre o fluxo manual e o fluxo de confirmação OCR, como
-  pede a regra 2 da seção 17 do `CLAUDE.md`.
+  credenciais reais quando a conta do produto existir (ver
+  `docs/database.md` — pendência registrada).
+- `src/features/measurements/schemas.ts` — schema Zod único, compartilhado
+  entre o fluxo manual e o futuro fluxo de confirmação OCR (regra 2 da
+  seção 17 do `CLAUDE.md`).
+- **`MeasurementRepository` sobre IndexedDB/Dexie** (`src/lib/db/`) — ver
+  seção dedicada abaixo. Registrar, editar, excluir (com desfazer) e
+  listar/filtrar medições já funciona de ponta a ponta, salvando de
+  verdade no navegador.
 
-**Nada é persistido ainda.** O formulário de registro manual valida e
-exibe uma tela de confirmação, mas não grava em IndexedDB nem no Supabase
-— isso está marcado explicitamente no código com `TODO (Fase N)` e é a
-próxima etapa do roadmap.
-
-## Camadas planejadas (fases seguintes)
-
-Os componentes de UI não devem chamar o Supabase diretamente. As fases
-seguintes devem introduzir:
+## Camada de dados local (implementada)
 
 ```ts
 interface MeasurementRepository {
@@ -56,7 +51,40 @@ interface MeasurementRepository {
   update(id: string, input: UpdateMeasurementInput): Promise<GlucoseMeasurement>;
   remove(id: string): Promise<void>;
 }
+```
 
+`src/lib/db/measurement-repository.ts` implementa essa interface sobre
+Dexie (`src/lib/db/schema.ts`, banco `gliconexo`, tabela `measurements`),
+com um método extra `restore(id)` para o "desfazer" de exclusões
+recentes na UI do histórico. Decisões relevantes:
+
+- UUID gerado no cliente (`crypto.randomUUID()`) em `create`, permitindo
+  registro offline idempotente quando a sincronização existir.
+- Exclusão lógica (`deletedAt`) em vez de exclusão física, com `version`
+  incrementado a cada `update`/`remove`/`restore` — já preparado para a
+  estratégia de conflito otimista da Fase 4 (ver abaixo).
+- `getDb()` instancia o Dexie sob demanda (nunca no import), porque
+  `new Dexie(...)` exige `indexedDB`, que não existe durante a
+  renderização no servidor (Next.js roda em Node).
+- Componentes de UI leem os dados via `dexie-react-hooks`
+  (`useLiveQuery`), não via `fetch`/estado manual — a tela atualiza
+  sozinha quando outro componente grava no mesmo banco.
+- Filtros (período/contexto/origem) e agrupamento por dia
+  (`src/features/measurements/filter-measurements.ts`) e estatísticas
+  (`src/features/measurements/stats.ts`) são funções puras, testadas em
+  `tests/unit/`, mantendo essa lógica fora dos componentes visuais
+  (CLAUDE.md, seção 6, "metricas devem ser funcoes puras e testadas").
+
+**Ainda não implementado nesta camada:** nenhum dado é escopado por
+`user_id` (não existe autenticação ainda — todo o dispositivo é uma
+"conta local" única) nem limpo em um logout (que também não existe);
+isso é trabalho da Fase 2/4, junto da privacidade local descrita na
+seção 13 do `CLAUDE.md`. Nada sincroniza com o Supabase ainda — é por
+isso que todo registro aparece com o selo "Pendente" no histórico.
+
+## Camadas ainda planejadas (fases seguintes)
+
+```ts
 interface OcrProvider {
   recognize(input: Blob): Promise<OcrResult>;
 }
@@ -68,13 +96,11 @@ interface SyncService {
 }
 ```
 
-- `MeasurementRepository` — implementado sobre Dexie (IndexedDB) na Fase 3,
-  cobrindo leitura local imediata e escrita otimista.
 - `OcrProvider` — implementado com Tesseract.js na Fase 5, carregado sob
   demanda (o bundle principal não deve incluir o engine OCR).
 - `SyncService` — outbox + fila de sincronização com o Supabase, criada na
-  Fase 4, com UUID gerado no cliente para permitir criação offline
-  idempotente.
+  Fase 4, reaproveitando o `version`/`deletedAt` já presentes no schema
+  local.
 
 ## Decisões de Next.js 16
 
@@ -101,7 +127,10 @@ foi implementada.
 
 ## Limitações conhecidas desta entrega
 
-- Sem service worker: o app ainda não funciona offline de fato.
-- Sem IndexedDB: nenhuma medição é persistida localmente.
-- Sem RLS/migrations: não há banco real conectado.
+- Sem service worker: mesmo com dados salvos em IndexedDB, o app ainda
+  não é servido offline de fato (o shell/HTML depende da rede).
+- Dados locais não são escopados por usuário nem sincronizam entre
+  dispositivos — só existe uma "conta local" por navegador.
+- Sem RLS/migrations: não há banco remoto real conectado (pendência de
+  produto registrada em `docs/database.md`).
 - Sem OCR: a opção "Usar câmera" mostra um estado "em breve".
