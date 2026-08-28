@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f7f9fc;
+  --foreground: #14294b;
+  --surface: #ffffff;
+  --surface-muted: #eef2f7;
+  --border: #dbe3ee;
+
+  --brand-navy: #14294b;
+  --brand-blue: #1e9af3;
+  --brand-teal: #22c9a0;
+
+  --status-below: #e5484d;
+  --status-within: #22c55e;
+  --status-above: #f5a524;
+}
+
+.dark {
+  --background: #0b1526;
+  --foreground: #edf2fa;
+  --surface: #101d34;
+  --surface-muted: #16233d;
+  --border: #223353;
+
+  --brand-navy: #4c6491;
+  --brand-blue: #4db3ff;
+  --brand-teal: #3fe0b5;
+
+  --status-below: #ff6b6f;
+  --status-within: #4ade80;
+  --status-above: #ffbb52;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-teal: var(--brand-teal);
+
+  --color-status-below: var(--status-below);
+  --color-status-within: var(--status-within);
+  --color-status-above: var(--status-above);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
