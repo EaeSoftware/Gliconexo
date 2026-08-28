@@ -20,7 +20,7 @@ flowchart TD
     H --> I[PDF ou CSV]
 ```
 
-## Estado implementado nesta entrega (Fase 1, Fase 3 parcial, Fase 5, gráfico da Fase 6, exportação da Fase 7)
+## Estado implementado nesta entrega (Fase 1, Fase 3 parcial, Fase 5, gráfico da Fase 6, exportação da Fase 7, Fase 8 parcial)
 
 - `src/app/(public)/*` — rotas públicas (landing, entrar, cadastro,
   recuperar senha, privacidade, termos).
@@ -45,6 +45,9 @@ flowchart TD
   giro, pré-processamento e reconhecimento de dígitos já funcionam.
 - Gráfico de linha temporal (Recharts, lazy) e exportação de dados
   (CSV/JSON) — ver `docs/telas.md` para o detalhe tela a tela.
+- **Service worker real** (`public/sw.js`) com estratégia de cache por
+  rota, página offline e atualização controlada — ver seção dedicada
+  abaixo.
 
 ## Camada de dados local (implementada)
 
@@ -135,6 +138,78 @@ relevantes:
   dependência de terceiros que exige internet nesse momento. Ver
   `docs/privacy-and-security.md`.
 
+## Service worker e cache (implementado)
+
+`public/sw.js` é um arquivo estático escrito à mão, sem passar por
+nenhuma etapa de build — decisão deliberada, não a opção "padrão" da
+`CLAUDE.md` (que sugere Serwist). O motivo:
+
+- Este projeto roda em Next.js 16 com **Turbopack** como bundler padrão
+  (`dev` e `build`). O plugin de build do Serwist (`@serwist/next`) é
+  baseado em webpack e explicitamente não funciona sob Turbopack (avisa
+  isso em tempo de build — ver
+  [serwist/serwist#54](https://github.com/serwist/serwist/issues/54)).
+- A alternativa oficial para Turbopack, `@serwist/turbopack`, resolve
+  isso servindo o worker através de uma Route Handler que empacota o
+  arquivo com `esbuild`/`esbuild-wasm` **em tempo de execução**, a cada
+  requisição — o próprio pacote se descreve, no código-fonte, como um
+  "workaround... enquanto plugins ainda não são suportados" no
+  Turbopack.
+- Para um app que processa dados de saúde, uma cadeia experimental
+  (empacotamento dinâmico via WASM dentro de uma rota, especificamente
+  para o arquivo que decide o que fica em cache) pareceu um risco maior
+  do que um arquivo JavaScript simples, estático, curto e auditável à
+  mão. Isso é revisado quando o suporte a Turbopack no Serwist sair do
+  estágio experimental.
+
+Consequência prática: não há geração automática de um manifest de
+precache com hash de conteúdo (o que o Serwist faria sozinho). Em vez
+disso, `CACHE_VERSION` (no topo de `public/sw.js`) precisa ser
+incrementado manualmente sempre que uma mudança no arquivo exigir
+invalidar caches antigos — o `activate` do worker apaga qualquer cache
+`gliconexo-*` que não bata com a versão atual.
+
+Estratégias por rota, implementadas no listener `fetch`:
+
+- **`cache-first`**: `/icons/*`, `/logo/*`, `/_next/static/*` (chunks
+  com hash, imutáveis), `/manifest.webmanifest` e os ícones gerados por
+  convenção do Next (`/icon.png`, `/apple-icon.png`).
+- **`stale-while-revalidate`**: navegação para páginas públicas (`/`,
+  `/entrar`, `/cadastro`, `/recuperar-senha`, `/privacidade`, `/termos`,
+  `/onboarding`) — responde do cache instantaneamente quando existir, e
+  atualiza o cache em segundo plano.
+- **Somente rede, nunca interceptado nem cacheado**: qualquer caminho
+  sob `/app/*` (autenticado, com dados de glicemia) e qualquer caminho
+  sob `/auth`/`/api` — CLAUDE.md, seção 14, "nao cachear HTML autenticado
+  com dados privados no service worker". Em navegação para `/app/*` sem
+  rede disponível, a única coisa servida é a página `/offline`
+  pré-cacheada (nunca uma resposta autenticada antiga).
+- **Nunca intercepta origem cruzada** (`url.origin !== self.location.origin`
+  faz o `fetch` handler devolver o controle ao navegador sem tocar na
+  requisição) — protege explicitamente o download do motor/modelo do
+  Tesseract.js via CDN de qualquer interferência do service worker.
+- Só requisições `GET` são interceptadas; qualquer outro método passa
+  direto.
+
+Atualização: o worker novo fica em estado "waiting" até o cliente mandar
+`{ type: "SKIP_WAITING" }` (`src/lib/pwa/use-service-worker.ts` +
+`src/components/pwa/update-available-banner.tsx`) — nunca troca de
+versão sozinho enquanto o usuário está usando o app. O registro só
+acontece em produção (`process.env.NODE_ENV === "production"`), nunca em
+`next dev`, para não brigar com o hot reload do Turbopack.
+
+**Verificado nesta entrega** com Playwright contra o build de produção:
+o worker registra e ativa; com o processo do `next start` derrubado de
+propósito (falha de rede real, não simulada por CDP), uma página pública
+já visitada continua respondendo do cache e uma rota protegida nunca
+visitada mostra `/offline` sem vazar conteúdo antigo; alterando o
+conteúdo de `sw.js` e chamando `registration.update()`, o aviso de nova
+versão aparece e o botão "Atualizar agora" troca o controlador da
+página. (Nota de metodologia: `context.setOffline()`/`context.route()`
+do Playwright não interceptam de forma confiável requisições feitas
+*de dentro* do service worker nesta versão — por isso a verificação
+usou uma falha de rede real, derrubando o servidor, em vez de emulação.)
+
 ## Camadas ainda planejadas (fases seguintes)
 
 ```ts
@@ -148,8 +223,6 @@ interface SyncService {
 - `SyncService` — outbox + fila de sincronização com o Supabase, criada na
   Fase 4, reaproveitando o `version`/`deletedAt` já presentes no schema
   local.
-- Service worker com estratégia de cache (Fase 8) — hoje nada é servido
-  offline de fato, mesmo com os dados já em IndexedDB.
 
 ## Decisões de Next.js 16
 
@@ -176,10 +249,19 @@ foi implementada.
 
 ## Limitações conhecidas desta entrega
 
-- Sem service worker: mesmo com dados salvos em IndexedDB, o app ainda
-  não é servido offline de fato (o shell/HTML depende da rede), e o
-  motor de OCR precisa de internet na primeira vez que é usado em cada
-  dispositivo (ver "Câmera e OCR" acima).
+- O service worker cobre o shell público e os assets estáticos, mas o
+  motor de OCR ainda precisa de internet na primeira vez que é usado em
+  cada dispositivo (dependência de CDN externa, ver "Câmera e OCR"
+  acima) — isso é intencionalmente fora do escopo do service worker
+  (`url.origin !== self.location.origin` nunca é interceptado).
+- Uma primeira visita **totalmente** offline (nunca abriu o app antes,
+  neste dispositivo) não tem nada para mostrar — é uma limitação
+  inerente a qualquer PWA baseado em service worker, não deste em
+  particular.
+- Sem Content Security Policy: os cabeçalhos de segurança "seguros"
+  (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`)
+  já estão ativos (`next.config.ts`), mas uma CSP completa foi
+  propositalmente deixada de fora — ver `docs/privacy-and-security.md`.
 - Dados locais não são escopados por usuário nem sincronizam entre
   dispositivos — só existe uma "conta local" por navegador.
 - Sem RLS/migrations: não há banco remoto real conectado (pendência de
@@ -187,3 +269,6 @@ foi implementada.
 - Gráfico de linha temporal existe, mas sem série por contexto nem
   gráfico de quantidade por dia (resto da Fase 6); exportação em PDF
   ainda não existe (resto da Fase 7).
+- Testes cross-browser reais (Safari iOS, Chrome Android em hardware
+  físico) ainda não foram feitos — só Chromium via Playwright, contra o
+  build de produção.

@@ -55,6 +55,24 @@ ser verificado ponta a ponta nesta sandbox — apenas o fluxo ao redor
 confirmação/edição do valor) foi confirmado. Ver "OCR e conectividade"
 em `docs/telas.md` e "Câmera e OCR" em `docs/architecture.md`.
 
+O **service worker** (`public/sw.js`, Fase 8) não tem testes unitários
+próprios: `jsdom`/Vitest não implementam a API real de Service Worker
+(`self`, `caches`, `ServiceWorkerGlobalScope`), então testar suas
+estratégias de cache exige um navegador de verdade. A verificação foi
+feita com Playwright contra o build de produção: registro/ativação do
+worker; uma página pública já visitada continuando a responder com o
+servidor de produção genuinamente derrubado (não uma emulação de rede);
+uma rota protegida nunca visitada mostrando a página `/offline` na
+mesma condição, sem vazar HTML autenticado antigo; e, simulando uma
+nova versão do arquivo, o aviso "nova versão disponível" aparecendo sem
+sobrepor a barra de navegação inferior (390px/320px) e o botão
+"Atualizar agora" trocando o controlador da página de fato. Detalhe de
+por que a verificação usou uma queda real do servidor em vez de
+`context.setOffline()`/`context.route()` do Playwright (que não
+interceptam de forma confiável requisições originadas de dentro do
+próprio service worker) em "Service worker e cache",
+`docs/architecture.md`.
+
 ## O que ainda não existe
 
 A suíte completa descrita em `CLAUDE.md` (seção 19) depende de

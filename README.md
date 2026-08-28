@@ -20,8 +20,9 @@ A especificação completa do produto está em [`CLAUDE.md`](./CLAUDE.md).
 Esta entrega cobre a **Fase 0 (auditoria)**, a **Fase 1 (base do
 projeto)**, boa parte da **Fase 3 (registro manual e histórico)**, a
 **Fase 5 (câmera e OCR)**, o gráfico de linha temporal da **Fase 6
-(dashboard)**, e a exportação de dados (CSV/JSON) da **Fase 7
-(relatórios e privacidade)** do plano descrito em `CLAUDE.md`, seção 21:
+(dashboard)**, a exportação de dados (CSV/JSON) da **Fase 7
+(relatórios e privacidade)**, e boa parte da **Fase 8 (PWA e
+endurecimento)** do plano descrito em `CLAUDE.md`, seção 21:
 
 - ✅ Scaffold Next.js (App Router) + TypeScript estrito + Tailwind CSS v4.
 - ✅ Identidade visual GlicoNexo (logo, ícones PWA, paleta, tema claro/escuro/sistema).
@@ -64,11 +65,24 @@ projeto)**, boa parte da **Fase 3 (registro manual e histórico)**, a
   existe como URL temporária revogada ao final. Uma falha de OCR nunca
   bloqueia a digitação manual (`src/features/ocr/`) — ver "Câmera e
   OCR e conectividade" em `docs/telas.md`.
+- ✅ **Service worker real e modo offline** (`public/sw.js`, escrito à
+  mão — ver "Sobre o service worker" abaixo): cache-first para ícones e
+  assets versionados, stale-while-revalidate para as páginas públicas,
+  e **rede apenas (nunca cache) para `/app/*`**, para nunca guardar
+  dados de saúde autenticados no service worker. Página `/offline`
+  quando uma navegação falha sem nada em cache, e um aviso "nova versão
+  disponível" que só troca de versão quando o usuário confirma. Também
+  nesta entrega: cabeçalhos de segurança básicos (`X-Content-Type-
+  Options`, `Referrer-Policy`, `Permissions-Policy`) em
+  `next.config.ts`.
 - ✅ Testes unitários (Vitest) para os schemas Zod, a regra das quatro
   medições, os filtros/agrupamento/classificação de histórico, a
   geração de CSV, os repositórios IndexedDB (com `fake-indexeddb`), o
   parser de candidatos numéricos do OCR e o pipeline de
-  pré-processamento de imagem — 87 testes, todos passando.
+  pré-processamento de imagem — 87 testes, todos passando. O service
+  worker foi verificado manualmente com Playwright (sem testes
+  unitários, por não haver como emular a API real de Service Worker em
+  `jsdom`) — ver `docs/testing.md`.
 
 **Ainda não implementado** (fases seguintes do `CLAUDE.md`, seção 21):
 
@@ -83,7 +97,9 @@ projeto)**, boa parte da **Fase 3 (registro manual e histórico)**, a
   da Fase 6 — o gráfico principal já existe, ver acima).
 - Geração de PDF e exclusão de conta (o resto da Fase 7 — CSV e JSON já
   existem, ver acima). Exclusão de conta depende da autenticação real.
-- Service worker com estratégia de cache e testes cross-browser (Fase 8).
+- Content Security Policy completa e testes cross-browser em dispositivo
+  físico (o resto da Fase 8 — service worker e headers básicos já
+  existem, ver acima).
 
 Os pontos pendentes estão marcados com `TODO (Fase N)` no código onde
 fizer sentido, e documentados tela a tela em
@@ -148,16 +164,27 @@ projeto for criado (Fase 2):
 ## Testar como PWA e modo offline
 
 1. Rode `npm run build && npm run start` (o modo `dev` não reflete o
-   comportamento final de instalação).
+   comportamento final de instalação — o service worker só se registra
+   em produção, de propósito, para não brigar com o hot reload).
 2. Abra o app no Chrome/Edge e use as ferramentas de desenvolvedor
-   (Application → Manifest) para conferir o `manifest.webmanifest` gerado
-   em `/manifest.webmanifest`.
+   (Application → Manifest) para conferir o `manifest.webmanifest`
+   gerado em `/manifest.webmanifest`, e (Application → Service Workers)
+   para conferir que `sw.js` está registrado e ativo.
 3. Um botão de instalação está disponível em **Configurações → Instalar
    aplicativo**, usando o evento `beforeinstallprompt`.
-4. **Importante:** esta entrega ainda não inclui um service worker com
-   estratégia de cache (Fase 8 do `CLAUDE.md`). Isso significa que o app
-   ainda não funciona de fato offline nem é instalável de forma completa
-   em todos os navegadores — apenas o manifest e os ícones estão prontos.
+4. Para testar offline de verdade: navegue por algumas páginas públicas
+   (landing, entrar, cadastro) para que o service worker as guarde em
+   cache, depois pare o servidor (`Ctrl+C` no terminal do `npm run
+   start`) e recarregue — essas páginas continuam abrindo. Uma rota
+   protegida (`/app/*`) nunca visitada antes, na mesma condição, mostra
+   a página `/offline` em vez de um erro do navegador (dados
+   autenticados nunca ficam em cache, de propósito — ver
+   `docs/privacy-and-security.md`).
+5. **Importante:** o service worker cobre o shell público e os assets
+   estáticos, mas ainda não existe uma Content Security Policy completa
+   nem testes em dispositivo físico (Android/iOS) — só verificado com
+   Chromium via Playwright até aqui. Ver "Limitações e pendências
+   conhecidas" abaixo.
 
 ## Estrutura do projeto
 
@@ -167,24 +194,28 @@ src/
     (public)/          rotas públicas: landing, entrar, cadastro, recuperar-senha, privacidade, termos
     (protected)/app/    rotas autenticadas: início, registrar, histórico, análises, relatórios, configurações, privacidade
     onboarding/         fluxo de 4 passos pós-cadastro
+    offline/              página offline (fallback do service worker)
     manifest.ts         manifest da PWA
   components/
     ui/                 primitivos (Button, TextField, Logo)
     layout/             Sidebar, BottomNav, ConnectionStatus
     theme/               tema claro/escuro/sistema
-    auth/, legal/, feedback/, pwa/
+    pwa/                  InstallPwaButton, UpdateAvailableBanner
+    auth/, legal/, feedback/
   features/
     auth/                schemas e formulários de autenticação
     measurements/       schemas, componentes, filtros/estatísticas puras (testados)
+    ocr/                  câmera, recorte, pré-processamento e OcrProvider (Tesseract.js)
     onboarding/           conteúdo dos 4 passos
     navigation/         itens do menu
   lib/
     supabase/            clientes Supabase (browser/servidor)
     db/                  IndexedDB local (Dexie): schema + MeasurementRepository
-    theme/, offline/, pwa/  hooks utilitários
+    theme/, offline/, pwa/  hooks utilitários (tema, online/offline, service worker)
 public/
   icons/                ícones da PWA (192, 512, maskable, apple-touch)
   logo/                 logo GlicoNexo em SVG
+  sw.js                  service worker (cache, offline, atualização controlada)
 tests/
   unit/                 testes Vitest
 docs/
@@ -210,9 +241,17 @@ para garantir fidelidade total à marca.
 - Medições já são persistidas de verdade, mas **só neste dispositivo**:
   não há sincronização com nuvem, escopo por usuário nem limpeza no
   logout (não existe logout real ainda).
-- Não há service worker/offline real, apenas o manifest da PWA — os
-  dados locais funcionam offline, mas o app em si depende da rede para
-  carregar o HTML/JS na primeira visita.
+- O service worker cobre o shell público e os assets estáticos, mas uma
+  primeira visita **totalmente** offline (nunca abriu o app neste
+  dispositivo antes) não tem nada em cache para mostrar — limitação
+  inerente a qualquer PWA. O motor de OCR também exige internet na
+  primeira vez que a câmera é usada em cada dispositivo.
+- Não existe uma Content Security Policy completa ainda (só os
+  cabeçalhos de segurança básicos) — ver `docs/privacy-and-security.md`
+  para o porquê disso ter sido adiado de propósito.
+- O PWA/service worker só foi verificado com Chromium via Playwright
+  contra o build de produção — ainda faltam testes em dispositivo físico
+  Android/iOS.
 - Textos de privacidade e termos são rascunhos e estão marcados como
   pendentes de revisão jurídica.
 - Nenhuma validação clínica, jurídica ou de usabilidade foi realizada.

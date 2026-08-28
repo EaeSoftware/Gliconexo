@@ -335,6 +335,43 @@ fallback (nenhum candidato → entrada manual) foi exercitado e
 confirmado correto, mas o reconhecimento bem-sucedido de um visor real
 depende de teste manual num ambiente com internet livre.
 
+## PWA: instalação, service worker e modo offline
+
+- **Instalação** (`InstallPwaButton`, em Configurações) já era real desde
+  a Fase 1 (evento `beforeinstallprompt`, instrução manual no iOS). O que
+  esta entrega adiciona é o que faltava para a instalação valer a pena:
+  um service worker de verdade e cabeçalhos de segurança básicos.
+- **Service worker** (`public/sw.js`, registrado por
+  `src/lib/pwa/use-service-worker.ts`, só em produção — nunca em `next
+  dev`, para não atrapalhar o hot reload): cache-first para ícones/
+  `_next/static/*`/manifest, stale-while-revalidate para a casca das
+  páginas públicas (landing, entrar, cadastro, onboarding etc.), e
+  **rede apenas (nunca cache) para `/app/*`** — nenhuma tela autenticada
+  com dados de glicemia é armazenada pelo service worker, conforme
+  CLAUDE.md seção 14. Detalhe técnico e a razão de ter sido escrito à
+  mão em vez de usar Serwist: ver "Service worker e cache" em
+  `docs/architecture.md`.
+- **Página offline** (`/offline`) aparece só quando uma navegação falha
+  de verdade e não há nada em cache — nunca mostra dados antigos de uma
+  tela protegida, e explica que os dados locais (IndexedDB) continuam
+  intactos e voltam a aparecer assim que o app carregar.
+- **Atualização controlada**: quando uma nova versão do service worker
+  termina de instalar, um aviso "Uma nova versão do GlicoNexo está
+  disponível" aparece no topo do app (`UpdateAvailableBanner`, renderizado
+  em fluxo normal — nunca `position: fixed`, então nunca cobre a barra de
+  navegação inferior nem qualquer gesto nativo do Android/iOS, o mesmo
+  cuidado já usado nos botões de exportação). Só troca de versão quando o
+  usuário toca em "Atualizar agora".
+- **Verificação nesta entrega**: testado com Playwright contra o build
+  de produção — o service worker registra e ativa; uma página pública já
+  visitada continua renderizando com o servidor totalmente fora do ar
+  (processo do `next start` derrubado de propósito); uma rota protegida
+  nunca visitada mostra a página `/offline` nessa mesma condição, sem
+  vazar nenhum conteúdo antigo; simulando uma nova versão do arquivo
+  `sw.js`, o aviso de atualização aparece, não sobrepõe a barra de
+  navegação inferior em 390px/320px, e o botão "Atualizar agora"
+  realmente troca o controlador da página.
+
 ## Como isso se encaixa nas fases do `CLAUDE.md`
 
 Autenticação real (Fase 2) ainda destrava `/entrar`, `/cadastro`,
@@ -349,4 +386,8 @@ Configurações; OCR (Fase 5) já destravou a aba "Usar câmera"; gráficos
 — falta apenas a série por contexto e o gráfico de quantidade por
 dia/contexto; exportação (Fase 7) já destravou o CSV de `/app/relatorios`
 e o JSON completo em `/app/privacidade`/Configurações — faltam apenas o
-PDF e a exclusão de conta, que continua exigindo a autenticação real.
+PDF e a exclusão de conta, que continua exigindo a autenticação real;
+PWA/service worker (Fase 8) já destravou o modo offline real do shell
+público, a página `/offline` e o aviso de atualização — falta a
+Content Security Policy completa (ver `docs/privacy-and-security.md`) e
+os testes cross-browser reais em dispositivo físico.

@@ -44,12 +44,34 @@ inicial, no onboarding e nas telas do app.
   explícita do usuário (botão de exportar), via download comum ou pela
   Web Share API nativa — nunca automaticamente, nunca para um servidor
   próprio.
+- **Service worker sem dados privados**: `public/sw.js` intercepta e
+  cacheia apenas assets estáticos (ícones, `_next/static/*`, manifest) e
+  a navegação para páginas **públicas** (landing, entrar, cadastro,
+  privacidade, termos, onboarding). Qualquer caminho sob `/app/*`
+  (autenticado, com dados de glicemia) ou `/auth`/`/api` passa direto
+  para a rede, nunca é armazenado em `Cache Storage` — CLAUDE.md, seção
+  14. Detalhe técnico completo em `docs/architecture.md` ("Service
+  worker e cache").
+- **Cabeçalhos de segurança** (`next.config.ts`): `X-Content-Type-
+  Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
+  e `Permissions-Policy: camera=(self), microphone=(), geolocation=()`
+  — liberando a câmera só para a própria origem (necessária para o OCR)
+  e negando microfone/geolocalização, que o app não usa.
 
 ## Pendente (fases seguintes)
 
-- HTTPS em produção, cabeçalhos de segurança (`X-Content-Type-Options`,
-  `Referrer-Policy`, `Permissions-Policy`) e Content Security Policy
-  compatível com câmera, worker de OCR e Supabase.
+- HTTPS em produção (depende do provedor de deploy — pendência
+  registrada em `docs/database.md` junto da conta Supabase/Vercel).
+- **Content Security Policy completa** — propositalmente adiada. Uma CSP
+  precisa liberar explicitamente o CDN do Tesseract.js
+  (`cdn.jsdelivr.net`) e, quando existir, o domínio real do projeto
+  Supabase; nenhum dos dois pôde ser validado neste ambiente (o proxy de
+  rede da sandbox bloqueia o CDN, e o Supabase ainda não está
+  conectado). Uma CSP mal calibrada quebraria a câmera/OCR ou o futuro
+  login silenciosamente — melhor registrar como pendência a testar num
+  ambiente real do que declarar algo não verificado (CLAUDE.md, seção
+  24). Os três cabeçalhos de baixo risco (`X-Content-Type-Options`,
+  `Referrer-Policy`, `Permissions-Policy`) já estão ativos, ver acima.
 - Row Level Security e políticas descritas em `docs/database.md`.
 - Rate limiting em rotas server-side sensíveis.
 - Sanitização de observações antes de renderizar/exportar (relevante a
@@ -58,10 +80,6 @@ inicial, no onboarding e nas telas do app.
   e nunca confiando em `user_id` vindo do cliente.
 - Garantia de que nenhuma medição apareça em analytics, logs, breadcrumbs
   de erro ou URLs (a ser verificado quando a telemetria for introduzida).
-- Estratégia de cache do service worker: `cache-first` para ícones/fontes
-  locais, `stale-while-revalidate` para recursos públicos,
-  `network-only`/`no-store` para autenticação e operações sensíveis, sem
-  cache de HTML autenticado com dados privados (Fase 8).
 - Limpeza dos dados locais (IndexedDB) por `user_id`, após logout
   concluído — ainda não existe login/logout real, então não há o que
   limpar por usuário hoje; isto é trabalho da Fase 2/4.
