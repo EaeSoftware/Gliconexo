@@ -19,10 +19,10 @@ A especificação completa do produto está em [`CLAUDE.md`](./CLAUDE.md).
 
 Esta entrega cobre a **Fase 0 (auditoria)**, a **Fase 1 (base do
 projeto)**, boa parte da **Fase 3 (registro manual e histórico)**, a
-**Fase 5 (câmera e OCR)**, o gráfico de linha temporal da **Fase 6
-(dashboard)**, a exportação de dados (CSV/JSON) da **Fase 7
-(relatórios e privacidade)**, e boa parte da **Fase 8 (PWA e
-endurecimento)** do plano descrito em `CLAUDE.md`, seção 21:
+**Fase 5 (câmera e OCR)**, a **Fase 6 completa (dashboard e gráficos)**,
+a exportação de dados (CSV/JSON) da **Fase 7 (relatórios e
+privacidade)**, e boa parte da **Fase 8 (PWA e endurecimento)** do plano
+descrito em `CLAUDE.md`, seção 21:
 
 - ✅ Scaffold Next.js (App Router) + TypeScript estrito + Tailwind CSS v4.
 - ✅ Identidade visual GlicoNexo (logo, ícones PWA, paleta, tema claro/escuro/sistema).
@@ -41,12 +41,16 @@ endurecimento)** do plano descrito em `CLAUDE.md`, seção 21:
   passam a classificar cada medição como abaixo/dentro/acima da faixa
   (texto + ícone, nunca só cor) e a mostrar os percentuais reais — sem
   faixa configurada, nada é classificado (CLAUDE.md, seção 17, regra 8).
-- ✅ **Gráfico de linha temporal em Análises** (Recharts, carregado sob
-  demanda), com faixas de referência quando a faixa pessoal está
-  configurada, filtro de período (7/30/90 dias/tudo), e uma tabela
-  textual acessível equivalente ao gráfico (`<details>`, para navegação
-  por teclado/leitor de tela). Não interpola dias sem dados nem projeta
-  tendência.
+- ✅ **Os três gráficos de Análises** (Recharts, carregados sob demanda):
+  linha temporal com faixas de referência e filtro de período; série por
+  contexto (café da manhã/almoço/lanche da tarde/jantar/outros, uma
+  cor validada por balde — nunca confundível com as cores de status);
+  e quantidade de medições por dia e contexto (barras empilhadas). Os
+  três têm tabela textual acessível equivalente (`<details>`, para
+  navegação por teclado/leitor de tela) e nenhum interpola dias sem
+  dados nem projeta tendência. A partir da quarta medição, um resumo
+  equivalente (média/mínimo/máximo/registros/distribuição + o gráfico de
+  linha) também aparece na Início, como pede CLAUDE.md 10.4.
 - ✅ **Exportação de dados**, com cuidado para não conflitar com
   funções nativas do Android/iOS: em Relatórios, um CSV real das
   medições (período, observações opcionais, cabeçalhos em português,
@@ -78,11 +82,12 @@ endurecimento)** do plano descrito em `CLAUDE.md`, seção 21:
 - ✅ Testes unitários (Vitest) para os schemas Zod, a regra das quatro
   medições, os filtros/agrupamento/classificação de histórico, a
   geração de CSV, os repositórios IndexedDB (com `fake-indexeddb`), o
-  parser de candidatos numéricos do OCR e o pipeline de
-  pré-processamento de imagem — 87 testes, todos passando. O service
-  worker foi verificado manualmente com Playwright (sem testes
-  unitários, por não haver como emular a API real de Service Worker em
-  `jsdom`) — ver `docs/testing.md`.
+  parser de candidatos numéricos do OCR, o pipeline de
+  pré-processamento de imagem e a preparação dos dados dos gráficos por
+  contexto — 96 testes, todos passando. O service worker e os gráficos
+  Recharts foram verificados manualmente com Playwright (sem testes
+  unitários para eles, por não haver como emular a API real de Service
+  Worker em `jsdom`, e por serem visuais) — ver `docs/testing.md`.
 
 **Ainda não implementado** (fases seguintes do `CLAUDE.md`, seção 21):
 
@@ -93,8 +98,6 @@ endurecimento)** do plano descrito em `CLAUDE.md`, seção 21:
 - Fila de sincronização offline↔nuvem (Fase 4) — por isso todo registro
   aparece com o selo "Pendente" no histórico, e os dados não saem do
   dispositivo atual.
-- Séries por contexto e gráfico de quantidade por dia/contexto (o resto
-  da Fase 6 — o gráfico principal já existe, ver acima).
 - Geração de PDF e exclusão de conta (o resto da Fase 7 — CSV e JSON já
   existem, ver acima). Exclusão de conta depende da autenticação real.
 - Content Security Policy completa e testes cross-browser em dispositivo

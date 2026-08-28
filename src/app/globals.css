@@ -16,6 +16,19 @@
   --status-below: #e5484d;
   --status-within: #22c55e;
   --status-above: #f5a524;
+
+  /* Paleta categórica dos gráficos por contexto (Análises), na ordem
+     café da manhã / almoço / lanche da tarde / jantar / outros
+     contextos. Validada com o script do skill de dataviz: pares
+     adjacentes passam separação CVD e o piso de visão normal; cada cor
+     também foi conferida isoladamente contra as três cores de status
+     acima (abaixo/dentro/acima da faixa) para não ser confundida com
+     elas no mesmo gráfico. */
+  --series-context-1: #1e9af3;
+  --series-context-2: #92400e;
+  --series-context-3: #0891b2;
+  --series-context-4: #4a3aa7;
+  --series-context-5: #e87ba4;
 }
 
 .dark {
@@ -32,6 +45,12 @@
   --status-below: #ff6b6f;
   --status-within: #4ade80;
   --status-above: #ffbb52;
+
+  --series-context-1: #3987e5;
+  --series-context-2: #c2760f;
+  --series-context-3: #0891b2;
+  --series-context-4: #9085e9;
+  --series-context-5: #d55181;
 }
 
 @theme inline {
@@ -48,6 +67,12 @@
   --color-status-below: var(--status-below);
   --color-status-within: var(--status-within);
   --color-status-above: var(--status-above);
+
+  --color-series-context-1: var(--series-context-1);
+  --color-series-context-2: var(--series-context-2);
+  --color-series-context-3: var(--series-context-3);
+  --color-series-context-4: var(--series-context-4);
+  --color-series-context-5: var(--series-context-5);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

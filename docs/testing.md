@@ -31,16 +31,20 @@ npm run build         # build de produção (também roda checagem de tipos)
 | `tests/unit/pluralize.test.ts` | `formatMeasurementCount`: concordância singular/plural de "medição(ões)", com e sem "confirmada(s)" — criada depois de um bug real de concordância aparecer em produção. |
 | `tests/unit/ocr-parse-candidates.test.ts` | `parseNumericCandidates`/`pickBestCandidate`: extração de números de 1–999 do texto bruto do OCR, rejeição de texto sem dígitos, desduplicação e escolha do primeiro candidato válido. |
 | `tests/unit/ocr-preprocess.test.ts` | Pipeline de pré-processamento de imagem (`toGrayscale`, `adjustContrast`, `denoise`, `threshold`, `preprocessForThreshold`) como funções puras sobre um buffer de pixels compatível com `ImageData`, sem depender de `<canvas>` real. |
+| `tests/unit/context-buckets.test.ts` | `bucketForContext`: agrupamento dos 9 contextos de medição nos 5 "baldes" usados pelos gráficos por contexto de Análises (café da manhã/almoço/lanche da tarde/jantar têm balde próprio; os demais caem em "outros"). |
+| `tests/unit/chart-data.test.ts` | `buildContextSeriesPoints`/`buildDailyContextCounts`: preparação pura dos dados dos gráficos "Glicemia por contexto" e "Medições por dia e contexto" — valor só na chave do próprio balde, contagem por dia/balde, ordenação, e nenhum dia sem medição é inventado. |
 
 Executado nesta entrega: `npm run lint`, `npm run typecheck` (via
 `tsc --noEmit` e também dentro de `next build`), `npm run build` e
-`npm run test` — todos passando (87 testes, 15 arquivos). Além disso, os
+`npm run test` — todos passando (96 testes, 17 arquivos). Além disso, os
 fluxos completos (registrar → início → histórico → análises → editar →
 excluir → desfazer; configurar faixa → ver classificação → filtrar por
-faixa → ver percentuais em análises; o gráfico de linha temporal com e
-sem faixa configurada, incluindo a tabela textual acessível e o filtro
-de período; a exportação de CSV/JSON, incluindo o conteúdo do arquivo
-baixado e a posição dos botões em relação à barra de navegação; e a
+faixa → ver percentuais em análises; os três gráficos de Análises (linha
+temporal, série por contexto, quantidade por dia/contexto) com e sem
+faixa configurada, incluindo as tabelas textuais acessíveis e o filtro
+de período; o resumo pós-quarta-medição na Início; a exportação de
+CSV/JSON, incluindo o conteúdo do arquivo baixado e a posição dos
+botões em relação à barra de navegação; e a
 captura por câmera — permissão, moldura, recorte, giro, fallback para
 seleção de arquivo, confirmação obrigatória e o fluxo de "tentar
 novamente" — foram exercitados manualmente com Playwright contra o
@@ -54,6 +58,19 @@ ser verificado ponta a ponta nesta sandbox — apenas o fluxo ao redor
 (captura, recorte, giro, estado de carregamento e a obrigatoriedade de
 confirmação/edição do valor) foi confirmado. Ver "OCR e conectividade"
 em `docs/telas.md` e "Câmera e OCR" em `docs/architecture.md`.
+
+**Revisão visual com dados sintéticos:** os três gráficos e o resumo da
+Início dependem de haver medições reais para renderizar algo — testá-los
+manualmente exigiu popular o IndexedDB com dados fictícios (13 medições
+sintéticas, claramente não vindas do TCC, geradas por um script de apoio
+fora do repositório) e tirar screenshots de cada tela em claro/escuro e
+mobile/desktop via Playwright. Essa revisão encontrou e corrigiu dois
+bugs reais antes de irem para o PR: o card de progresso da Início
+continuava mostrando "X de 4 medições registradas" mesmo com X bem maior
+que 4 (ex. "13 de 4"), e o gráfico "Glicemia por contexto" mostrava uma
+legenda duplicada (a nativa do Recharts, fora de ordem, ao lado da
+legenda própria) — ver `docs/architecture.md`, "Paleta dos gráficos por
+contexto".
 
 O **service worker** (`public/sw.js`, Fase 8) não tem testes unitários
 próprios: `jsdom`/Vitest não implementam a API real de Service Worker

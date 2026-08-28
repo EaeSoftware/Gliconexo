@@ -20,7 +20,7 @@ flowchart TD
     H --> I[PDF ou CSV]
 ```
 
-## Estado implementado nesta entrega (Fase 1, Fase 3 parcial, Fase 5, gráfico da Fase 6, exportação da Fase 7, Fase 8 parcial)
+## Estado implementado nesta entrega (Fase 1, Fase 3 parcial, Fase 5, Fase 6 completa, exportação da Fase 7, Fase 8 parcial)
 
 - `src/app/(public)/*` — rotas públicas (landing, entrar, cadastro,
   recuperar senha, privacidade, termos).
@@ -43,8 +43,10 @@ flowchart TD
 - **`OcrProvider` implementado com Tesseract.js** (`src/features/ocr/`)
   — ver seção dedicada abaixo. Captura por câmera/arquivo, recorte,
   giro, pré-processamento e reconhecimento de dígitos já funcionam.
-- Gráfico de linha temporal (Recharts, lazy) e exportação de dados
-  (CSV/JSON) — ver `docs/telas.md` para o detalhe tela a tela.
+- Os três gráficos de Análises (linha temporal, série por contexto,
+  quantidade por dia/contexto — todos Recharts, lazy) e exportação de
+  dados (CSV/JSON) — ver `docs/telas.md` para o detalhe tela a tela e a
+  seção "Paleta dos gráficos por contexto" abaixo.
 - **Service worker real** (`public/sw.js`) com estratégia de cache por
   rota, página offline e atualização controlada — ver seção dedicada
   abaixo.
@@ -210,6 +212,51 @@ do Playwright não interceptam de forma confiável requisições feitas
 *de dentro* do service worker nesta versão — por isso a verificação
 usou uma falha de rede real, derrubando o servidor, em vez de emulação.)
 
+## Paleta dos gráficos por contexto (implementado)
+
+Os dois gráficos novos de Análises (`ContextSeriesChart`,
+`DailyContextChart` — CLAUDE.md 10.11) precisam de 5 cores categóricas,
+uma por "balde" de contexto: café da manhã, almoço, lanche da tarde,
+jantar, e outros contextos (jejum, madrugada, antes de dormir, atividade
+física e outro, agrupados — `src/features/measurements/context-buckets.ts`,
+`bucketForContext`). Essas cores foram escolhidas e validadas com o
+script `validate_palette.js` do skill de dataviz interno, em vez de
+escolhidas de olho, pelos seguintes motivos:
+
+- **Não podem ser confundidas entre si.** Validado no pairlist adjacente
+  (a ordem de exibição na legenda/linhas) tanto em claro quanto em
+  escuro: banda de luminosidade OKLCH, piso de croma, separação sob
+  simulação de daltonismo (Delta E OKLab) e piso de visão normal — ver
+  `scripts/validate_palette.js` no skill para os limiares exatos.
+- **Não podem ser confundidas com as cores de status** já usadas na
+  mesma tela (`--status-below`/`--status-within`/`--status-above`, o
+  vermelho/verde/laranja de "abaixo/dentro/acima da faixa"). Cada uma
+  das 5 cores categóricas foi conferida isoladamente contra as três
+  cores de status, em ambos os temas, antes de entrar na paleta final.
+- **Onde há contraste baixo contra o fundo do gráfico** (3 das 5 cores em
+  modo claro), a "válvula de escape" documentada pelo skill é usada:
+  rótulos visíveis sempre presentes (legenda própria + tooltip) e uma
+  tabela de dados equivalente — nunca depender só da cor.
+
+Tokens em `src/app/globals.css` (`--series-context-1` a `-5`, expostos
+como `--color-series-context-*` via `@theme inline`, seguindo o mesmo
+padrão dos tokens de marca/status já existentes):
+
+| Balde | Claro | Escuro |
+| --- | --- | --- |
+| Café da manhã | `#1e9af3` | `#3987e5` |
+| Almoço | `#92400e` | `#c2760f` |
+| Lanche da tarde | `#0891b2` | `#0891b2` |
+| Jantar | `#4a3aa7` | `#9085e9` |
+| Outros contextos | `#e87ba4` | `#d55181` |
+
+A legenda é construída à mão (`ContextBucketLegend`) em vez de usar o
+componente `<Legend>` nativo do Recharts: o nativo reordenava as
+entradas (aparentemente por ordem alfabética do rótulo) em vez de manter
+a ordem fixa dos baldes, e renderizar os dois ao mesmo tempo criava uma
+legenda duplicada — bug encontrado e corrigido durante a revisão visual
+desta entrega.
+
 ## Camadas ainda planejadas (fases seguintes)
 
 ```ts
@@ -266,9 +313,10 @@ foi implementada.
   dispositivos — só existe uma "conta local" por navegador.
 - Sem RLS/migrations: não há banco remoto real conectado (pendência de
   produto registrada em `docs/database.md`).
-- Gráfico de linha temporal existe, mas sem série por contexto nem
-  gráfico de quantidade por dia (resto da Fase 6); exportação em PDF
-  ainda não existe (resto da Fase 7).
+- Os três gráficos da Fase 6 (linha temporal, série por contexto,
+  quantidade por dia/contexto) estão completos; falta filtro por
+  contexto e "mês atual" em Análises (fora do escopo original da Fase 6).
+  Exportação em PDF ainda não existe (resto da Fase 7).
 - Testes cross-browser reais (Safari iOS, Chrome Android em hardware
   físico) ainda não foram feitos — só Chromium via Playwright, contra o
   build de produção.

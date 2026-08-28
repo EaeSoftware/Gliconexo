@@ -93,13 +93,25 @@ trabalho da Fase 2, junto da autenticação.
 ### `/app` — Início
 **Arquivo:** `src/app/(protected)/app/page.tsx` · **Componente:** `HomeDashboard` (`src/features/measurements/components/home-dashboard.tsx`) · **Status:** ✅ Funcional (dados locais reais)
 
-Saudação, botão grande "Registrar glicemia", card de progresso "X de 4
-medições registradas" (regra real e testada em `getDashboardProgress`) e
-card de "última medição" — ambos agora lêem de verdade o IndexedDB local
-via `useLiveQuery` (Dexie), então a tela atualiza sozinha assim que uma
-medição é criada/editada/excluída em qualquer outra aba/tela. **O que
-ainda falta:** isso é só o dispositivo atual — sem sincronização com o
-Supabase (Fase 4), o mesmo histórico não aparece em outro aparelho.
+Saudação, botão grande "Registrar glicemia" e card de "última medição" —
+lêem de verdade o IndexedDB local via `useLiveQuery` (Dexie), então a
+tela atualiza sozinha assim que uma medição é criada/editada/excluída em
+qualquer outra aba/tela.
+
+Antes da quarta medição confirmada, mostra o progresso "X de 4 medições
+registradas" com uma barra e a explicação de que os gráficos aparecem
+depois da quarta (regra real e testada em `getDashboardProgress`) — como
+pede CLAUDE.md 10.4. **A partir da quarta**, esse card é substituído por
+um resumo dos últimos 30 dias (também exigido pela seção 10.4): média,
+mínimo, máximo, quantidade de registros, distribuição abaixo/dentro/acima
+da faixa (quando configurada) e o mesmo gráfico de linha temporal usado
+em Análises, mais um link "Ver análise completa". *(Corrigido nesta
+entrega: antes, o card de progresso continuava mostrando "X de 4" mesmo
+com X bem maior que 4, ex. "13 de 4 medições registradas" — bug
+encontrado numa revisão visual com dados sintéticos.)*
+**O que ainda falta:** isso é só o dispositivo atual — sem sincronização
+com o Supabase (Fase 4), o mesmo histórico não aparece em outro
+aparelho.
 
 ### `/app/registrar` — Registrar medição
 **Arquivo:** `src/app/(protected)/app/registrar/page.tsx` · **Componente:** `RegisterTabs` (`src/features/measurements/components/register-tabs.tsx`) · **Status:** ✅ Funcional (as duas abas)
@@ -196,11 +208,25 @@ restantes (`getDashboardProgress`). A partir da 4ª:
   padrão) com data/valor/contexto — a alternativa textual acessível
   exigida pelo `CLAUDE.md` (seções 10.11 e 16), útil para navegação por
   teclado/leitor de tela.
+- **Glicemia por contexto** (`ContextSeriesSection` +
+  `ContextSeriesChart`, também lazy): uma linha por "balde" de contexto
+  — café da manhã, almoço, lanche da tarde, jantar, e outros contextos
+  (jejum, madrugada, antes de dormir, atividade física, outro agrupados)
+  — exatamente como pede CLAUDE.md 10.11. Cada balde tem uma cor fixa,
+  validada com o script do skill de dataviz para não ser confundida
+  nem com as outras quatro nem com as cores de "abaixo/dentro/acima da
+  faixa" usadas na mesma tela (ver `docs/architecture.md`, "Paleta dos
+  gráficos por contexto"). Sem interpolar entre pontos de baldes
+  diferentes nem entre dias sem dado; legenda própria (em ordem fixa,
+  não alfabética) e tabela de dados equivalente.
+- **Medições por dia e contexto** (`DailyContextSection` +
+  `DailyContextChart`, lazy): barras empilhadas por dia, com a mesma
+  paleta e legenda do gráfico anterior — quantidade de medições por dia,
+  quebrada por contexto. Dias sem nenhuma medição não aparecem (não são
+  inventados com contagem zero). Também com tabela de dados equivalente.
 
-**O que falta:** série por contexto (café da manhã/almoço/etc. como
-linhas separadas) e gráfico de "quantidade de medições por dia" ainda
-não existem; filtro por contexto e "mês atual" em Análises também
-ficaram fora deste incremento (o histórico já filtra por contexto).
+**O que falta:** filtro por contexto e "mês atual" em Análises ficaram
+fora deste incremento (o histórico já filtra por contexto).
 
 ### `/app/relatorios` — Relatórios
 **Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Componente:** `ExportPanel` (`src/features/reports/components/export-panel.tsx`) · **Status:** 🟡 Parcial — CSV real, PDF ainda não existe
@@ -381,10 +407,11 @@ ser informada (ver `docs/database.md`). IndexedDB + repositório (Fase 3)
 já destravou `/app`, `/app/registrar`, `/app/historico` e
 `/app/historico/[id]`, como descrito acima. Sincronização (Fase 4)
 ainda vai destravar o selo "Pendente" → "Sincronizado" e o indicador em
-Configurações; OCR (Fase 5) já destravou a aba "Usar câmera"; gráficos
-(Fase 6) já destravaram o gráfico de linha temporal de `/app/analises`
-— falta apenas a série por contexto e o gráfico de quantidade por
-dia/contexto; exportação (Fase 7) já destravou o CSV de `/app/relatorios`
+Configurações; OCR (Fase 5) já destravou a aba "Usar câmera"; os
+gráficos da Fase 6 descritos em CLAUDE.md 10.11 (linha temporal, série
+por contexto, quantidade por dia/contexto) estão completos em
+`/app/analises`, e o resumo pós-quarta-medição de CLAUDE.md 10.4 também
+já existe em `/app` (Início); exportação (Fase 7) já destravou o CSV de `/app/relatorios`
 e o JSON completo em `/app/privacidade`/Configurações — faltam apenas o
 PDF e a exclusão de conta, que continua exigindo a autenticação real;
 PWA/service worker (Fase 8) já destravou o modo offline real do shell

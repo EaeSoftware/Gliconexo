@@ -7,21 +7,13 @@ import { getDashboardProgress } from "@/features/measurements/dashboard-progress
 import { computeMeasurementStats, computeRangeDistribution } from "@/features/measurements/stats";
 import { filterMeasurements, type PeriodFilter } from "@/features/measurements/filter-measurements";
 import { GlucoseChartSection } from "@/features/measurements/components/glucose-chart-section";
+import { ContextSeriesSection } from "@/features/measurements/components/context-series-section";
+import { DailyContextSection } from "@/features/measurements/components/daily-context-section";
 import { PeriodSelect } from "@/features/measurements/components/period-select";
 import { formatMeasurementCount } from "@/features/measurements/pluralize";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ButtonLink } from "@/components/ui/button";
-
-function StatCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-4">
-      <p className="text-sm text-foreground/60">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-foreground">
-        {value} {unit ? <span className="text-sm font-normal text-foreground/60">{unit}</span> : null}
-      </p>
-    </div>
-  );
-}
+import { StatCard } from "@/features/measurements/components/stat-card";
 
 export function AnalyticsSummary() {
   const [period, setPeriod] = useState<PeriodFilter>(30);
@@ -118,6 +110,8 @@ export function AnalyticsSummary() {
           )}
 
           <GlucoseChartSection measurements={filtered} targetRange={targetRange} />
+          <ContextSeriesSection measurements={filtered} />
+          <DailyContextSection measurements={filtered} />
 
           <p className="text-xs text-foreground/50">
             Calculado com {formatMeasurementCount(stats.count, { confirmed: true })} no
