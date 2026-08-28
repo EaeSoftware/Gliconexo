@@ -20,18 +20,22 @@ export function SignupForm() {
 
   async function onSubmit(data: SignupInput) {
     setFormError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-    });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      });
 
-    if (error) {
+      if (error) {
+        setFormError("Não foi possível criar sua conta. Tente novamente em instantes.");
+        return;
+      }
+
+      setSuccess(true);
+    } catch {
       setFormError("Não foi possível criar sua conta. Tente novamente em instantes.");
-      return;
     }
-
-    setSuccess(true);
   }
 
   if (success) {

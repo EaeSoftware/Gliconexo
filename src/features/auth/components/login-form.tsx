@@ -21,16 +21,20 @@ export function LoginForm() {
 
   async function onSubmit(data: LoginInput) {
     setFormError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword(data);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword(data);
 
-    if (error) {
-      setFormError("Não foi possível entrar. Confira seu e-mail e senha.");
-      return;
+      if (error) {
+        setFormError("Não foi possível entrar. Confira seu e-mail e senha.");
+        return;
+      }
+
+      router.push("/app");
+      router.refresh();
+    } catch {
+      setFormError("Não foi possível entrar. Tente novamente em instantes.");
     }
-
-    router.push("/app");
-    router.refresh();
   }
 
   return (

@@ -13,6 +13,7 @@ import { TextField } from "@/components/ui/text-field";
 
 export function ResetPasswordForm() {
   const [sent, setSent] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -20,16 +21,21 @@ export function ResetPasswordForm() {
   } = useForm<ResetPasswordInput>({ resolver: zodResolver(resetPasswordSchema) });
 
   async function onSubmit(data: ResetPasswordInput) {
-    const supabase = createClient();
-    const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/entrar`
-        : undefined;
+    setFormError(null);
+    try {
+      const supabase = createClient();
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/entrar`
+          : undefined;
 
-    await supabase.auth.resetPasswordForEmail(data.email, { redirectTo });
+      await supabase.auth.resetPasswordForEmail(data.email, { redirectTo });
 
-    // Mensagem genérica sempre exibida: evita confirmar se o e-mail existe na base.
-    setSent(true);
+      // Mensagem genérica sempre exibida: evita confirmar se o e-mail existe na base.
+      setSent(true);
+    } catch {
+      setFormError("Não foi possível enviar o link. Tente novamente em instantes.");
+    }
   }
 
   if (sent) {
@@ -50,6 +56,11 @@ export function ResetPasswordForm() {
         error={errors.email?.message}
         {...register("email")}
       />
+      {formError ? (
+        <p role="alert" className="text-sm font-medium text-status-below">
+          {formError}
+        </p>
+      ) : null}
       <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
         {isSubmitting ? "Enviando..." : "Enviar link de recuperação"}
       </Button>
