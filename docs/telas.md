@@ -102,14 +102,11 @@ ainda falta:** isso é só o dispositivo atual — sem sincronização com o
 Supabase (Fase 4), o mesmo histórico não aparece em outro aparelho.
 
 ### `/app/registrar` — Registrar medição
-**Arquivo:** `src/app/(protected)/app/registrar/page.tsx` · **Componente:** `RegisterTabs` (`src/features/measurements/components/register-tabs.tsx`) · **Status:** 🟡 Parcial
+**Arquivo:** `src/app/(protected)/app/registrar/page.tsx` · **Componente:** `RegisterTabs` (`src/features/measurements/components/register-tabs.tsx`) · **Status:** ✅ Funcional (as duas abas)
 
 Duas abas, como pede a especificação:
 
-- **📷 Usar câmera** — ⚪ mostra um card "chega em breve", explicando que
-  por enquanto deve-se usar a entrada manual (a captura por câmera + OCR
-  é Fase 5).
-- **⌨️ Digitar valor** — ✅ formulário completo (`ManualEntryForm`,
+- **⌨️ Digitar valor** — formulário completo (`ManualEntryForm`,
   `src/features/measurements/components/manual-entry-form.tsx`): valor em
   mg/dL (validação 1–999, inteiro), data/hora pré-preenchida e editável,
   contexto (jejum, café da manhã, almoço, etc.), relação com a refeição,
@@ -118,6 +115,24 @@ Duas abas, como pede a especificação:
   cliente, e mostra uma tela de confirmação com atalhos para "Registrar
   outra" ou "Ver histórico". Ainda não sincroniza com a nuvem — o texto
   da confirmação avisa isso.
+- **📷 Usar câmera** — fluxo completo de captura + OCR
+  (`CameraCaptureFlow`, `src/features/ocr/`): pede permissão só ao
+  tocar em "Fotografar" (câmera traseira quando disponível, com moldura
+  de alinhamento), permite girar e recortar a imagem, roda um
+  pré-processamento local (escala de cinza, contraste, redução de
+  ruído, binarização em 3 níveis de limiar) e reconhece dígitos com
+  Tesseract.js — restrito a `0-9`, carregado só quando o usuário chega
+  nesta etapa. O resultado (com nível de confiança) preenche o mesmo
+  `ManualEntryForm` usado no registro manual, sempre exigindo
+  confirmação antes de salvar; sem candidato reconhecido, o campo fica
+  em branco para digitação manual, com a foto ainda visível. A foto
+  nunca é enviada a nenhum servidor nem persistida — o object URL
+  temporário é revogado ao salvar, cancelar ou tentar novamente. Sem
+  `getUserMedia` (ou permissão negada), cai automaticamente para
+  `<input type="file" accept="image/*" capture="environment">`.
+  **Limitação conhecida:** o motor de OCR (WebAssembly) e o modelo de
+  idioma são baixados do CDN público do Tesseract.js na primeira vez —
+  exige internet nesse momento; ver "OCR e conectividade" abaixo.
 
 ### `/app/historico` — Histórico
 **Arquivo:** `src/app/(protected)/app/historico/page.tsx` · **Componente:** `HistoryList` (`src/features/measurements/components/history-list.tsx`) · **Status:** ✅ Funcional (dados locais reais)
@@ -240,6 +255,8 @@ autenticação real (Fase 2).
 | `ClassificationBadge` | `src/features/measurements/components/classification-badge.tsx` | Selo Abaixo/Dentro/Acima (texto + ícone + cor) usado no histórico e no detalhe. |
 | `GlucoseChartSection` | `src/features/measurements/components/glucose-chart-section.tsx` | Gráfico de linha temporal (Recharts, carregado sob demanda) + tabela textual acessível equivalente. |
 | `ExportPanel` | `src/features/reports/components/export-panel.tsx` | Exportação de CSV das medições, com período e observações opcionais. |
+| `CameraCaptureFlow` | `src/features/ocr/components/camera-capture-flow.tsx` | Orquestra permissão/câmera → recorte/giro → OCR → confirmação. |
+| `ImageEditor` / `CropRectOverlay` | `src/features/ocr/components/` | Girar (90°) e recortar (retângulo arrastável/redimensionável) a foto capturada. |
 | `ExportAllDataButton` | `src/features/privacy/components/export-all-data-button.tsx` | Exportação/compartilhamento do JSON completo de dados locais. |
 | `Sidebar` / `BottomNav` | `src/components/layout/` | Navegação do app protegido, adaptada por breakpoint. |
 
@@ -292,6 +309,32 @@ nativas do Android/iOS nem com a navegação do próprio app:
   a barra de navegação inferior (`BottomNav`, que já reserva sua própria
   área com `env(safe-area-inset-bottom)` para a faixa de gestos do iOS).
 
+## OCR e conectividade
+
+O reconhecimento roda inteiramente no navegador (Tesseract.js, via
+WebAssembly) — a foto nunca sai do dispositivo. Mas a **primeira** vez
+que o usuário usa a câmera neste dispositivo, o navegador precisa
+baixar o motor (WebAssembly, alguns MB) e o modelo de idioma do CDN
+público do próprio Tesseract.js (`cdn.jsdelivr.net`), configuração
+padrão da biblioteca (`src/features/ocr/tesseract-provider.ts`). Sem
+internet nesse primeiro uso, o OCR falha graciosamente — a foto
+continua visível e o campo de valor fica em branco para digitação
+manual, nunca bloqueando o registro (CLAUDE.md, seção 17, regra 15).
+Isso está registrado como dependência de terceiros em
+`docs/privacy-and-security.md`.
+
+**Verificação nesta entrega:** o fluxo completo (permissão → câmera ao
+vivo com dispositivo de vídeo sintético do Chromium → captura → girar
+→ recortar → confirmação → salvar; e também o caminho por arquivo/
+seleção de imagem com uma foto de teste de um visor fictício) foi
+testado de ponta a ponta com Playwright contra o build de produção,
+sem erros de console. O reconhecimento em si (o resultado do OCR) não
+pôde ser verificado ao vivo neste ambiente de desenvolvimento porque a
+rede daqui bloqueia o CDN do Tesseract.js — o comportamento de
+fallback (nenhum candidato → entrada manual) foi exercitado e
+confirmado correto, mas o reconhecimento bem-sucedido de um visor real
+depende de teste manual num ambiente com internet livre.
+
 ## Como isso se encaixa nas fases do `CLAUDE.md`
 
 Autenticação real (Fase 2) ainda destrava `/entrar`, `/cadastro`,
@@ -301,7 +344,7 @@ ser informada (ver `docs/database.md`). IndexedDB + repositório (Fase 3)
 já destravou `/app`, `/app/registrar`, `/app/historico` e
 `/app/historico/[id]`, como descrito acima. Sincronização (Fase 4)
 ainda vai destravar o selo "Pendente" → "Sincronizado" e o indicador em
-Configurações; OCR (Fase 5) destrava a aba "Usar câmera"; gráficos
+Configurações; OCR (Fase 5) já destravou a aba "Usar câmera"; gráficos
 (Fase 6) já destravaram o gráfico de linha temporal de `/app/analises`
 — falta apenas a série por contexto e o gráfico de quantidade por
 dia/contexto; exportação (Fase 7) já destravou o CSV de `/app/relatorios`

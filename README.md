@@ -18,10 +18,10 @@ A especificação completa do produto está em [`CLAUDE.md`](./CLAUDE.md).
 ## Status atual do desenvolvimento
 
 Esta entrega cobre a **Fase 0 (auditoria)**, a **Fase 1 (base do
-projeto)**, boa parte da **Fase 3 (registro manual e histórico)**, o
-gráfico de linha temporal da **Fase 6 (dashboard)**, e a exportação de
-dados (CSV/JSON) da **Fase 7 (relatórios e privacidade)** do plano
-descrito em `CLAUDE.md`, seção 21:
+projeto)**, boa parte da **Fase 3 (registro manual e histórico)**, a
+**Fase 5 (câmera e OCR)**, o gráfico de linha temporal da **Fase 6
+(dashboard)**, e a exportação de dados (CSV/JSON) da **Fase 7
+(relatórios e privacidade)** do plano descrito em `CLAUDE.md`, seção 21:
 
 - ✅ Scaffold Next.js (App Router) + TypeScript estrito + Tailwind CSS v4.
 - ✅ Identidade visual GlicoNexo (logo, ícones PWA, paleta, tema claro/escuro/sistema).
@@ -54,10 +54,21 @@ descrito em `CLAUDE.md`, seção 21:
   quando disponível (com fallback para download comum) e nunca
   `window.open` nem elementos fixos que possam cobrir a navegação —
   ver "Exportação e compartilhamento no mobile" em `docs/telas.md`.
+- ✅ **Captura por câmera e OCR (Tesseract.js)**: fotografar o visor do
+  glicosímetro (ou escolher uma imagem existente, com fallback via
+  `<input capture="environment">` quando `getUserMedia` não está
+  disponível), recortar e girar a foto, rodar o reconhecimento de
+  dígitos inteiramente no navegador (testando vários níveis de limiar
+  de binarização) e exigir confirmação/edição do valor antes de
+  salvar — a foto nunca é enviada a um servidor nem persistida, só
+  existe como URL temporária revogada ao final. Uma falha de OCR nunca
+  bloqueia a digitação manual (`src/features/ocr/`) — ver "Câmera e
+  OCR e conectividade" em `docs/telas.md`.
 - ✅ Testes unitários (Vitest) para os schemas Zod, a regra das quatro
   medições, os filtros/agrupamento/classificação de histórico, a
-  geração de CSV e os repositórios IndexedDB (com `fake-indexeddb`) —
-  70 testes, todos passando.
+  geração de CSV, os repositórios IndexedDB (com `fake-indexeddb`), o
+  parser de candidatos numéricos do OCR e o pipeline de
+  pré-processamento de imagem — 87 testes, todos passando.
 
 **Ainda não implementado** (fases seguintes do `CLAUDE.md`, seção 21):
 
@@ -68,7 +79,6 @@ descrito em `CLAUDE.md`, seção 21:
 - Fila de sincronização offline↔nuvem (Fase 4) — por isso todo registro
   aparece com o selo "Pendente" no histórico, e os dados não saem do
   dispositivo atual.
-- Captura por câmera e OCR (Tesseract.js) (Fase 5).
 - Séries por contexto e gráfico de quantidade por dia/contexto (o resto
   da Fase 6 — o gráfico principal já existe, ver acima).
 - Geração de PDF e exclusão de conta (o resto da Fase 7 — CSV e JSON já

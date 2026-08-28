@@ -29,18 +29,31 @@ npm run build         # build de produção (também roda checagem de tipos)
 | `tests/unit/csv.test.ts` | Geração do CSV de medições: cabeçalho em português, ordenação, observação omitida por padrão, escape de vírgula/aspas/quebra de linha. |
 | `tests/unit/export-all-data.test.ts` | Formato do export completo (JSON): exclui medições excluídas logicamente, inclui/omite a faixa pessoal corretamente. |
 | `tests/unit/pluralize.test.ts` | `formatMeasurementCount`: concordância singular/plural de "medição(ões)", com e sem "confirmada(s)" — criada depois de um bug real de concordância aparecer em produção. |
+| `tests/unit/ocr-parse-candidates.test.ts` | `parseNumericCandidates`/`pickBestCandidate`: extração de números de 1–999 do texto bruto do OCR, rejeição de texto sem dígitos, desduplicação e escolha do primeiro candidato válido. |
+| `tests/unit/ocr-preprocess.test.ts` | Pipeline de pré-processamento de imagem (`toGrayscale`, `adjustContrast`, `denoise`, `threshold`, `preprocessForThreshold`) como funções puras sobre um buffer de pixels compatível com `ImageData`, sem depender de `<canvas>` real. |
 
 Executado nesta entrega: `npm run lint`, `npm run typecheck` (via
 `tsc --noEmit` e também dentro de `next build`), `npm run build` e
-`npm run test` — todos passando (70 testes, 13 arquivos). Além disso, os
+`npm run test` — todos passando (87 testes, 15 arquivos). Além disso, os
 fluxos completos (registrar → início → histórico → análises → editar →
 excluir → desfazer; configurar faixa → ver classificação → filtrar por
 faixa → ver percentuais em análises; o gráfico de linha temporal com e
 sem faixa configurada, incluindo a tabela textual acessível e o filtro
-de período; e a exportação de CSV/JSON, incluindo o conteúdo do arquivo
-baixado e a posição dos botões em relação à barra de navegação) foram
-exercitados manualmente com Playwright contra o build de produção, sem
-erros de console/página.
+de período; a exportação de CSV/JSON, incluindo o conteúdo do arquivo
+baixado e a posição dos botões em relação à barra de navegação; e a
+captura por câmera — permissão, moldura, recorte, giro, fallback para
+seleção de arquivo, confirmação obrigatória e o fluxo de "tentar
+novamente" — foram exercitados manualmente com Playwright contra o
+build de produção, incluindo o Chromium com
+`--use-fake-device-for-media-stream`/`--use-fake-ui-for-media-stream`
+para simular a câmera sem hardware real, sem erros de console/página.
+**Limitação do ambiente de teste:** o proxy de rede desta sessão bloqueia
+o CDN público do Tesseract.js (`cdn.jsdelivr.net`), então o
+reconhecimento de dígitos em si (o resultado numérico do OCR) não pôde
+ser verificado ponta a ponta nesta sandbox — apenas o fluxo ao redor
+(captura, recorte, giro, estado de carregamento e a obrigatoriedade de
+confirmação/edição do valor) foi confirmado. Ver "OCR e conectividade"
+em `docs/telas.md` e "Câmera e OCR" em `docs/architecture.md`.
 
 ## O que ainda não existe
 
@@ -57,9 +70,12 @@ funcionalidades que ainda não foram implementadas:
   outbox de sincronização — dependem das Fases 2 e 4. O CRUD de medição
   em si já tem cobertura via `measurement-repository.test.ts`.
 - **E2E (Playwright)**: fluxo completo de cadastro → onboarding → 4
-  medições → dashboard → OCR → exportação — depende das Fases 2–7.
-  Nenhuma dependência de câmera física deve ser usada no CI; a fixture de
-  imagem e o mock de `getUserMedia` ficam para a Fase 5.
+  medições → dashboard → OCR → exportação — depende das Fases 2 e 4
+  (autenticação e sincronização) para existir como uma suíte automatizada
+  no CI; até lá, a verificação do fluxo de câmera/OCR foi feita
+  manualmente contra o build de produção (ver acima). Nenhuma dependência
+  de câmera física é usada — o Chromium é aberto com flags de dispositivo
+  de mídia falso.
 - **Segurança**: os testes descritos em `CLAUDE.md` seção 19 (isolamento
   entre usuários, acesso anônimo, XSS em observações, vazamento em
   URLs/logs) dependem do banco e da autenticação reais.

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ManualEntryForm } from "@/features/measurements/components/manual-entry-form";
+import { CameraCaptureFlow } from "@/features/ocr/components/camera-capture-flow";
 
 export function RegisterTabs() {
   const [mode, setMode] = useState<"camera" | "manual">("manual");
@@ -38,21 +39,8 @@ export function RegisterTabs() {
       </div>
 
       {mode === "camera" ? (
-        <div
-          role="tabpanel"
-          className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-surface-muted p-8 text-center"
-        >
-          <span aria-hidden="true" className="text-3xl">
-            📷
-          </span>
-          <p className="font-medium text-foreground">
-            Captura por câmera com OCR chega em breve
-          </p>
-          <p className="text-sm text-foreground/70">
-            Por enquanto, use a opção &ldquo;Digitar valor&rdquo; para
-            registrar sua medição manualmente. Uma falha na leitura por
-            câmera nunca impedirá o registro manual.
-          </p>
+        <div role="tabpanel">
+          <CameraCaptureFlow />
         </div>
       ) : (
         <div role="tabpanel">

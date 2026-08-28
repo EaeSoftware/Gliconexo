@@ -26,8 +26,24 @@ inicial, no onboarding e nas telas do app.
 - `prefers-reduced-motion` é respeitado globalmente (`globals.css`).
 - Formulário de recuperação de senha sempre mostra uma mensagem genérica,
   para não confirmar se um e-mail existe na base.
-- Nenhuma foto é capturada ou enviada nesta entrega (a funcionalidade de
-  câmera ainda não existe).
+- **Câmera e OCR**: a foto é processada inteiramente no navegador
+  (Tesseract.js local) e **nunca é enviada a nenhum servidor** nem
+  persistida — existe só como `Blob`/object URL em memória enquanto o
+  usuário está na tela de captura, revogado ao salvar, cancelar ou
+  tentar novamente (`src/features/ocr/components/camera-capture-flow.tsx`).
+  A permissão da câmera só é solicitada quando o usuário toca em
+  "Fotografar", nunca antes.
+- **Dependência de terceiros documentada**: na primeira vez que o OCR
+  roda em cada dispositivo, o navegador baixa o motor (WebAssembly) e o
+  modelo de idioma do CDN público do Tesseract.js
+  (`cdn.jsdelivr.net`) — configuração padrão da biblioteca. Nenhum dado
+  do usuário (foto, valor, observação) é enviado nessa chamada, só o
+  próprio código/modelo do motor é baixado. Ver `docs/architecture.md`
+  ("Câmera e OCR").
+- Exportação de dados (CSV/JSON) sai do dispositivo apenas por ação
+  explícita do usuário (botão de exportar), via download comum ou pela
+  Web Share API nativa — nunca automaticamente, nunca para um servidor
+  próprio.
 
 ## Pendente (fases seguintes)
 
@@ -46,17 +62,20 @@ inicial, no onboarding e nas telas do app.
   locais, `stale-while-revalidate` para recursos públicos,
   `network-only`/`no-store` para autenticação e operações sensíveis, sem
   cache de HTML autenticado com dados privados (Fase 8).
-- Não armazenar a foto do glicosímetro por padrão; qualquer persistência
-  futura de imagem exigirá consentimento específico e decisão explícita
-  de produto.
 - Limpeza dos dados locais (IndexedDB) por `user_id`, após logout
-  concluído, quando a Fase 3 introduzir a persistência local.
+  concluído — ainda não existe login/logout real, então não há o que
+  limpar por usuário hoje; isto é trabalho da Fase 2/4.
+- Exclusão de conta (server-side, Fase 7) — a exportação completa de
+  dados já existe (`ExportAllDataButton`), mas a exclusão continua
+  desabilitada de propósito até a autenticação real existir.
 
 ## Retenção e exclusão
 
 A política de retenção final ainda não foi definida — deve ser
-documentada aqui antes da Fase 7 (relatórios e privacidade), junto da
-implementação da exportação completa de dados e da exclusão de conta.
+documentada aqui antes de a exclusão de conta ser implementada
+(depende da autenticação real, Fase 2). A exportação completa de dados
+locais já existe (Configurações e Central de privacidade dentro do
+app).
 
 ## Checklist de segurança para revisão contínua
 

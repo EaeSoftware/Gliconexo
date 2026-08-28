@@ -20,7 +20,7 @@ flowchart TD
     H --> I[PDF ou CSV]
 ```
 
-## Estado implementado nesta entrega (Fase 1 + Fase 3 parcial)
+## Estado implementado nesta entrega (Fase 1, Fase 3 parcial, Fase 5, gráfico da Fase 6, exportação da Fase 7)
 
 - `src/app/(public)/*` — rotas públicas (landing, entrar, cadastro,
   recuperar senha, privacidade, termos).
@@ -40,6 +40,11 @@ flowchart TD
   seção dedicada abaixo. Registrar, editar, excluir (com desfazer) e
   listar/filtrar medições já funciona de ponta a ponta, salvando de
   verdade no navegador.
+- **`OcrProvider` implementado com Tesseract.js** (`src/features/ocr/`)
+  — ver seção dedicada abaixo. Captura por câmera/arquivo, recorte,
+  giro, pré-processamento e reconhecimento de dígitos já funcionam.
+- Gráfico de linha temporal (Recharts, lazy) e exportação de dados
+  (CSV/JSON) — ver `docs/telas.md` para o detalhe tela a tela.
 
 ## Camada de dados local (implementada)
 
@@ -82,13 +87,57 @@ isso é trabalho da Fase 2/4, junto da privacidade local descrita na
 seção 13 do `CLAUDE.md`. Nada sincroniza com o Supabase ainda — é por
 isso que todo registro aparece com o selo "Pendente" no histórico.
 
-## Camadas ainda planejadas (fases seguintes)
+## Câmera e OCR (implementado)
 
 ```ts
 interface OcrProvider {
   recognize(input: Blob): Promise<OcrResult>;
 }
+```
 
+`src/features/ocr/tesseract-provider.ts` implementa essa interface com
+[Tesseract.js](https://tesseract.projectnaptha.com/), atrás da mesma
+interface sugerida em `CLAUDE.md` (seção 6) — trocar de motor de OCR no
+futuro não deve exigir reescrever a tela de captura. Decisões
+relevantes:
+
+- `import("tesseract.js")` só acontece dentro de `getWorker()`, chamado
+  pela primeira vez que o usuário efetivamente tira/seleciona uma foto
+  — confirmado no build de produção: o chunk do Tesseract.js não
+  aparece nas tags `<script>` de nenhuma página, nem mesmo
+  `/app/registrar` (CLAUDE.md, seção 20, "bundle principal nao deve
+  incluir engine OCR se o usuario nao abrir a camera").
+- O reconhecimento é restrito a dígitos (`tessedit_char_whitelist:
+  "0123456789"`), conforme CLAUDE.md 10.6.
+- `src/features/ocr/preprocess.ts` implementa o pipeline de
+  pré-processamento (escala de cinza → contraste → redução de ruído
+  via mediana 3×3 → binarização) como funções puras operando sobre um
+  formato compatível com `ImageData`, testáveis sem precisar de um
+  `<canvas>` real. `src/features/ocr/run-ocr-pipeline.ts` testa 3
+  níveis de limiar (`THRESHOLD_LEVELS`) e fica com o de maior
+  confiança, parando cedo se achar um candidato de alta confiança —
+  "testar variacoes de limiar e selecionar o candidato mais
+  consistente" (CLAUDE.md 10.6).
+- `src/features/ocr/parse-candidates.ts` extrai candidatos numéricos
+  válidos (1–999) do texto bruto reconhecido; texto sem dígitos não
+  gera candidato algum.
+- `src/features/ocr/canvas-utils.ts` concentra as operações de canvas
+  (girar, recortar, extrair/gravar pixels) usadas pelo editor de
+  imagem.
+- A foto (original, recortada e as variantes pré-processadas) só existe
+  como `Blob`/`URL.createObjectURL` em memória — nunca é gravada no
+  IndexedDB nem enviada a um servidor. Todo `object URL` temporário é
+  revogado ao salvar, cancelar ou tentar novamente
+  (`CameraCaptureFlow`).
+- **Dependência externa:** o motor (WebAssembly) e o modelo de idioma
+  são baixados do CDN público do Tesseract.js na primeira execução
+  neste dispositivo — não há dado do usuário nessa chamada, mas é uma
+  dependência de terceiros que exige internet nesse momento. Ver
+  `docs/privacy-and-security.md`.
+
+## Camadas ainda planejadas (fases seguintes)
+
+```ts
 interface SyncService {
   pushPending(): Promise<SyncSummary>;
   pullChanges(): Promise<SyncSummary>;
@@ -96,11 +145,11 @@ interface SyncService {
 }
 ```
 
-- `OcrProvider` — implementado com Tesseract.js na Fase 5, carregado sob
-  demanda (o bundle principal não deve incluir o engine OCR).
 - `SyncService` — outbox + fila de sincronização com o Supabase, criada na
   Fase 4, reaproveitando o `version`/`deletedAt` já presentes no schema
   local.
+- Service worker com estratégia de cache (Fase 8) — hoje nada é servido
+  offline de fato, mesmo com os dados já em IndexedDB.
 
 ## Decisões de Next.js 16
 
@@ -128,9 +177,13 @@ foi implementada.
 ## Limitações conhecidas desta entrega
 
 - Sem service worker: mesmo com dados salvos em IndexedDB, o app ainda
-  não é servido offline de fato (o shell/HTML depende da rede).
+  não é servido offline de fato (o shell/HTML depende da rede), e o
+  motor de OCR precisa de internet na primeira vez que é usado em cada
+  dispositivo (ver "Câmera e OCR" acima).
 - Dados locais não são escopados por usuário nem sincronizam entre
   dispositivos — só existe uma "conta local" por navegador.
 - Sem RLS/migrations: não há banco remoto real conectado (pendência de
   produto registrada em `docs/database.md`).
-- Sem OCR: a opção "Usar câmera" mostra um estado "em breve".
+- Gráfico de linha temporal existe, mas sem série por contexto nem
+  gráfico de quantidade por dia (resto da Fase 6); exportação em PDF
+  ainda não existe (resto da Fase 7).

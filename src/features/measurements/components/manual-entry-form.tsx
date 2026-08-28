@@ -33,13 +33,35 @@ type ManualEntryFormProps = {
   origin?: "manual" | "ocr";
   defaultValue?: string;
   onSaved?: (measurement: GlucoseMeasurement) => void;
+  /** Foto recortada temporária, exibida acima do formulário (fluxo de OCR). */
+  previewImageUrl?: string;
+  /** Nível de confiança do OCR (0–1), registrado junto da medição. */
+  ocrConfidence?: number;
+  ocrEngineVersion?: string;
+  /** Mostra um botão "Tentar novamente" (voltar à captura), além de "Confirmar e salvar". */
+  onRetry?: () => void;
+  /**
+   * Chamado ao clicar em "Registrar outra medição" na tela de sucesso,
+   * no lugar do reset interno padrão — usado pelo fluxo de OCR para
+   * voltar à captura em vez de reexibir a foto/estado antigos.
+   */
+  onRegisterAnother?: () => void;
 } & (
   | { mode?: "create" }
   | { mode: "edit"; measurementId: string; initialValues: MeasurementInput; onCancel?: () => void }
 );
 
 export function ManualEntryForm(props: ManualEntryFormProps) {
-  const { origin = "manual", defaultValue, onSaved } = props;
+  const {
+    origin = "manual",
+    defaultValue,
+    onSaved,
+    previewImageUrl,
+    ocrConfidence,
+    ocrEngineVersion,
+    onRetry,
+    onRegisterAnother,
+  } = props;
   const isEdit = props.mode === "edit";
 
   const [saved, setSaved] = useState<GlucoseMeasurement | null>(null);
@@ -71,7 +93,11 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
         onSaved?.(updated);
         return;
       }
-      const measurement = await measurementRepository.create({ ...data, source: origin });
+      const measurement = await measurementRepository.create({
+        ...data,
+        source: origin,
+        ...(origin === "ocr" ? { ocrConfidence, ocrEngineVersion } : {}),
+      });
       setSaved(measurement);
       onSaved?.(measurement);
     } catch {
@@ -90,7 +116,12 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
           habilitada quando a conta do banco de dados estiver configurada.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button type="button" variant="outline" onClick={() => setSaved(null)} className="flex-1">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => (onRegisterAnother ? onRegisterAnother() : setSaved(null))}
+            className="flex-1"
+          >
             Registrar outra medição
           </Button>
           <Link
@@ -106,6 +137,15 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+      {previewImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- URL de blob local temporária
+        <img
+          src={previewImageUrl}
+          alt="Foto recortada do visor do glicosímetro, para conferência"
+          className="max-h-48 w-full rounded-xl border border-border object-contain"
+        />
+      ) : null}
+
       <TextField
         label="Valor (mg/dL)"
         type="number"
@@ -164,9 +204,22 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
       />
 
       {!isEdit && origin === "ocr" ? (
-        <p role="alert" className="text-sm font-medium text-foreground/80">
-          Confira o valor no visor antes de salvar.
-        </p>
+        <div className="flex flex-col gap-1">
+          <p role="alert" className="text-sm font-medium text-foreground/80">
+            Confira o valor no visor antes de salvar.
+          </p>
+          {ocrConfidence != null ? (
+            <p className="text-xs text-foreground/60">
+              {ocrConfidence >= 0.7
+                ? "Confiança do reconhecimento: alta."
+                : "Confiança do reconhecimento: baixa — revise o valor com atenção."}
+            </p>
+          ) : (
+            <p className="text-xs text-foreground/60">
+              Nenhum valor foi reconhecido automaticamente. Digite o valor mostrado no visor.
+            </p>
+          )}
+        </div>
       ) : null}
 
       {saveError ? (
@@ -179,6 +232,11 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
         {isEdit && props.onCancel ? (
           <Button type="button" variant="outline" onClick={props.onCancel} className="flex-1">
             Cancelar
+          </Button>
+        ) : null}
+        {!isEdit && onRetry ? (
+          <Button type="button" variant="outline" onClick={onRetry} className="flex-1">
+            Tentar novamente
           </Button>
         ) : null}
         <Button type="submit" disabled={isSubmitting} className="flex-1">
