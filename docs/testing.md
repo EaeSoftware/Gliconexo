@@ -31,9 +31,11 @@ Executado nesta entrega: `npm run lint`, `npm run typecheck` (via
 `tsc --noEmit` e também dentro de `next build`), `npm run build` e
 `npm run test` — todos passando (53 testes, 10 arquivos). Além disso, os
 fluxos completos (registrar → início → histórico → análises → editar →
-excluir → desfazer; e configurar faixa → ver classificação → filtrar por
-faixa → ver percentuais em análises) foram exercitados manualmente com
-Playwright contra o build de produção, sem erros de console/página.
+excluir → desfazer; configurar faixa → ver classificação → filtrar por
+faixa → ver percentuais em análises; e o gráfico de linha temporal com e
+sem faixa configurada, incluindo a tabela textual acessível e o filtro
+de período) foram exercitados manualmente com Playwright contra o build
+de produção, sem erros de console/página.
 
 ## O que ainda não existe
 

@@ -18,8 +18,9 @@ A especificação completa do produto está em [`CLAUDE.md`](./CLAUDE.md).
 ## Status atual do desenvolvimento
 
 Esta entrega cobre a **Fase 0 (auditoria)**, a **Fase 1 (base do
-projeto)** e boa parte da **Fase 3 (registro manual e histórico)** do
-plano descrito em `CLAUDE.md`, seção 21:
+projeto)**, boa parte da **Fase 3 (registro manual e histórico)** e o
+gráfico de linha temporal da **Fase 6 (dashboard)** do plano descrito
+em `CLAUDE.md`, seção 21:
 
 - ✅ Scaffold Next.js (App Router) + TypeScript estrito + Tailwind CSS v4.
 - ✅ Identidade visual GlicoNexo (logo, ícones PWA, paleta, tema claro/escuro/sistema).
@@ -38,6 +39,12 @@ plano descrito em `CLAUDE.md`, seção 21:
   passam a classificar cada medição como abaixo/dentro/acima da faixa
   (texto + ícone, nunca só cor) e a mostrar os percentuais reais — sem
   faixa configurada, nada é classificado (CLAUDE.md, seção 17, regra 8).
+- ✅ **Gráfico de linha temporal em Análises** (Recharts, carregado sob
+  demanda), com faixas de referência quando a faixa pessoal está
+  configurada, filtro de período (7/30/90 dias/tudo), e uma tabela
+  textual acessível equivalente ao gráfico (`<details>`, para navegação
+  por teclado/leitor de tela). Não interpola dias sem dados nem projeta
+  tendência.
 - ✅ Testes unitários (Vitest) para os schemas Zod, a regra das quatro
   medições, os filtros/agrupamento/classificação de histórico e os
   repositórios IndexedDB (com `fake-indexeddb`) — 53 testes, todos
@@ -53,9 +60,8 @@ plano descrito em `CLAUDE.md`, seção 21:
   aparece com o selo "Pendente" no histórico, e os dados não saem do
   dispositivo atual.
 - Captura por câmera e OCR (Tesseract.js) (Fase 5).
-- Gráficos (linha temporal, distribuição por faixa) do dashboard — o
-  resumo numérico (média/mín/máx) já é real, os gráficos em si são
-  Fase 6.
+- Séries por contexto e gráfico de quantidade por dia/contexto (o resto
+  da Fase 6 — o gráfico principal já existe, ver acima).
 - Geração de PDF/CSV e exclusão de conta (Fase 7).
 - Service worker com estratégia de cache e testes cross-browser (Fase 8).
 

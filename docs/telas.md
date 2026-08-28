@@ -154,18 +154,38 @@ Também mostra o selo de classificação abaixo/dentro/acima quando há
 faixa configurada.
 
 ### `/app/analises` — Análises
-**Arquivo:** `src/app/(protected)/app/analises/page.tsx` · **Componente:** `AnalyticsSummary` (`src/features/measurements/components/analytics-summary.tsx`) · **Status:** 🟡 Parcial
+**Arquivo:** `src/app/(protected)/app/analises/page.tsx` · **Componente:** `AnalyticsSummary` (`src/features/measurements/components/analytics-summary.tsx`) · **Status:** ✅ Funcional (dados locais reais)
 
-Com menos de 4 medições confirmadas, mostra o estado bloqueado com o
-número real de medições restantes (`getDashboardProgress`). A partir da
-4ª, mostra um resumo numérico real (última medição, média, mínimo,
-máximo — `computeMeasurementStats`, com testes unitários), calculado
-sobre os dados do IndexedDB. Quando há uma faixa pessoal configurada,
-mostra também os percentuais reais de medições abaixo/dentro/acima da
-faixa (`computeRangeDistribution`, testado); sem faixa configurada,
-mostra a explicação de que a classificação depende disso, em vez de
-inventar um percentual. **O que falta:** gráficos de fato (linha
-temporal, tabela por contexto) — isso é Fase 6.
+Com menos de 4 medições confirmadas (considerando o histórico
+completo), mostra o estado bloqueado com o número real de medições
+restantes (`getDashboardProgress`). A partir da 4ª:
+
+- Filtro de período (7/30/90 dias ou tudo), reaproveitando
+  `filterMeasurements` — afeta indicadores, distribuição e gráfico
+  abaixo, mas não a regra de desbloqueio (essa sempre olha o histórico
+  completo).
+- Resumo numérico (última medição, média, mínimo, máximo —
+  `computeMeasurementStats`, testado).
+- Quando há uma faixa pessoal configurada, os percentuais reais de
+  medições abaixo/dentro/acima da faixa (`computeRangeDistribution`,
+  testado); sem faixa configurada, mostra a explicação em vez de
+  inventar um percentual.
+- **Gráfico de linha temporal** (`GlucoseChartSection` +
+  `GlucoseLineChart`, via [Recharts](https://recharts.org)), carregado
+  sob demanda com `next/dynamic({ ssr: false })` — o código do gráfico
+  só entra no bundle quando esta tela é visitada e desbloqueada. Quando
+  há faixa configurada, mostra uma área e linhas de referência para o
+  mínimo/máximo. Dias sem registro não são preenchidos (sem
+  interpolação) e nenhuma tendência futura é projetada.
+- Abaixo do gráfico, uma tabela de dados (`<details>`, recolhida por
+  padrão) com data/valor/contexto — a alternativa textual acessível
+  exigida pelo `CLAUDE.md` (seções 10.11 e 16), útil para navegação por
+  teclado/leitor de tela.
+
+**O que falta:** série por contexto (café da manhã/almoço/etc. como
+linhas separadas) e gráfico de "quantidade de medições por dia" ainda
+não existem; filtro por contexto e "mês atual" em Análises também
+ficaram fora deste incremento (o histórico já filtra por contexto).
 
 ### `/app/relatorios` — Relatórios
 **Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Componente:** `ReportsStatus` (`src/features/measurements/components/reports-status.tsx`) · **Status:** ⚪ Placeholder (honesto sobre haver ou não dados)
@@ -207,6 +227,8 @@ exportação real (Fase 7 / seção 15 do `CLAUDE.md`).
 | `EmptyState` | `src/components/feedback/empty-state.tsx` | Estado vazio reutilizável (ícone, título, descrição, ação). |
 | `UndoToast` | `src/components/feedback/undo-toast.tsx` | Barra "excluído · Desfazer" com expiração automática, usada no histórico. |
 | `ConnectionStatus` | `src/components/layout/connection-status.tsx` | Badge Online/Offline em tempo real. |
+| `ClassificationBadge` | `src/features/measurements/components/classification-badge.tsx` | Selo Abaixo/Dentro/Acima (texto + ícone + cor) usado no histórico e no detalhe. |
+| `GlucoseChartSection` | `src/features/measurements/components/glucose-chart-section.tsx` | Gráfico de linha temporal (Recharts, carregado sob demanda) + tabela textual acessível equivalente. |
 | `Sidebar` / `BottomNav` | `src/components/layout/` | Navegação do app protegido, adaptada por breakpoint. |
 
 ## Camada de dados local (IndexedDB/Dexie)
@@ -248,6 +270,7 @@ já destravou `/app`, `/app/registrar`, `/app/historico` e
 `/app/historico/[id]`, como descrito acima. Sincronização (Fase 4)
 ainda vai destravar o selo "Pendente" → "Sincronizado" e o indicador em
 Configurações; OCR (Fase 5) destrava a aba "Usar câmera"; gráficos
-(Fase 6) destravam os gráficos de `/app/analises` (o resumo numérico já
-está pronto); exportação e exclusão de conta (Fase 7) destravam
+(Fase 6) já destravaram o gráfico de linha temporal de `/app/analises`
+— falta apenas a série por contexto e o gráfico de quantidade por
+dia/contexto; exportação e exclusão de conta (Fase 7) destravam
 `/app/relatorios` e as ações de `/app/privacidade`.
