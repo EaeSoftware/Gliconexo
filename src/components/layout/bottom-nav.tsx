@@ -25,7 +25,7 @@ export function BottomNav() {
                 <Link
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
-                  className="absolute -top-7 flex flex-col items-center gap-1.5 text-xs font-semibold text-brand-blue"
+                  className="absolute -top-7 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 text-xs font-semibold text-brand-blue"
                 >
                   <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand-blue to-brand-teal text-white shadow-md ring-4 ring-background transition-transform active:scale-95">
                     <Icon aria-hidden="true" size={28} strokeWidth={2.25} />
