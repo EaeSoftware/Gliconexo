@@ -37,7 +37,18 @@ describe("pickBestCandidate", () => {
     expect(pickBestCandidate([])).toBeNull();
   });
 
-  it("retorna o primeiro candidato", () => {
+  it("com um único candidato, retorna ele mesmo", () => {
+    expect(pickBestCandidate([118])).toBe(118);
+  });
+
+  it("prefere o candidato com mais dígitos, mesmo que apareça depois", () => {
+    // ruído do OCR (traço, ponto) costuma virar um dígito avulso antes
+    // ou depois do valor real do visor.
+    expect(pickBestCandidate([1, 118])).toBe(118);
+    expect(pickBestCandidate([118, 1])).toBe(118);
+  });
+
+  it("em empate de dígitos, usa a ordem de leitura como desempate", () => {
     expect(pickBestCandidate([118, 95])).toBe(118);
   });
 });

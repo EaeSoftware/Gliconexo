@@ -26,12 +26,19 @@ export class TesseractOcrProvider implements OcrProvider {
   private async getWorker(): Promise<TesseractWorker> {
     if (!this.workerPromise) {
       this.workerPromise = (async () => {
-        const { createWorker } = await import("tesseract.js");
+        const { createWorker, PSM } = await import("tesseract.js");
         const worker = await createWorker("eng", undefined, {
           logger: (message) => this.onProgress?.({ status: message.status, progress: message.progress }),
         });
-        // Restringe o reconhecimento a dígitos, conforme CLAUDE.md 10.6.
-        await worker.setParameters({ tessedit_char_whitelist: "0123456789" });
+        await worker.setParameters({
+          // Restringe o reconhecimento a dígitos, conforme CLAUDE.md 10.6.
+          tessedit_char_whitelist: "0123456789",
+          // O recorte já isola o visor: tratar como uma única linha evita
+          // que a segmentação automática (modo padrão, para páginas de
+          // texto comuns) quebre os dígitos do mostrador em blocos
+          // separados e devolva um número diferente do exibido.
+          tessedit_pageseg_mode: PSM.SINGLE_LINE,
+        });
         return worker;
       })();
     }
