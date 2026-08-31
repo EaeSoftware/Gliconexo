@@ -10,7 +10,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgba(0,0,0,0.06)] sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgba(0,0,0,0.06)] sm:hidden"
     >
       <ul className="grid grid-cols-5">
         {NAV_ITEMS.map((item) => {
@@ -25,10 +25,10 @@ export function BottomNav() {
                 <Link
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
-                  className="absolute -top-6 flex flex-col items-center gap-1 text-xs font-semibold text-brand-blue"
+                  className="absolute -top-7 flex flex-col items-center gap-1.5 text-xs font-semibold text-brand-blue"
                 >
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-blue to-brand-teal text-white shadow-md ring-4 ring-background transition-transform active:scale-95">
-                    <Icon aria-hidden="true" size={26} strokeWidth={2.25} />
+                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand-blue to-brand-teal text-white shadow-md ring-4 ring-background transition-transform active:scale-95">
+                    <Icon aria-hidden="true" size={28} strokeWidth={2.25} />
                   </span>
                   {item.label}
                 </Link>
@@ -41,11 +41,11 @@ export function BottomNav() {
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${
+                className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 text-xs font-medium transition-colors ${
                   isActive ? "text-brand-blue" : "text-foreground/60"
                 }`}
               >
-                <Icon aria-hidden="true" size={22} strokeWidth={isActive ? 2.25 : 2} />
+                <Icon aria-hidden="true" size={24} strokeWidth={isActive ? 2.25 : 2} />
                 {item.label}
               </Link>
             </li>
