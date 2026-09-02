@@ -33,6 +33,9 @@ npm run build         # build de produção (também roda checagem de tipos)
 | `tests/unit/ocr-preprocess.test.ts` | Pipeline de pré-processamento de imagem (`toGrayscale`, `adjustContrast`, `denoise`, `threshold`, `preprocessForThreshold`) como funções puras sobre um buffer de pixels compatível com `ImageData`, sem depender de `<canvas>` real. |
 | `tests/unit/context-buckets.test.ts` | `bucketForContext`: agrupamento dos 9 contextos de medição nos 5 "baldes" usados pelos gráficos por contexto de Análises (café da manhã/almoço/lanche da tarde/jantar têm balde próprio; os demais caem em "outros"). |
 | `tests/unit/chart-data.test.ts` | `buildContextSeriesPoints`/`buildDailyContextCounts`: preparação pura dos dados dos gráficos "Glicemia por contexto" e "Medições por dia e contexto" — valor só na chave do próprio balde, contagem por dia/balde, ordenação, e nenhum dia sem medição é inventado. |
+| `tests/unit/seven-segment-decode.test.ts` | `decodeDigit`/`SEGMENT_DIGIT_TABLE` do leitor de 7 segmentos: os 10 dígitos, caso especial do dígito "1" (célula estreita), rejeição de padrões ambíguos/traço isolado sem "chutar". |
+| `tests/unit/seven-segment-cluster.test.ts` | `clusterContoursByRow`/`scoreCluster`/`pickBestCluster`: agrupamento de contornos por linha/tamanho, descarte de ruído, e a heurística que escolhe o número grande central em vez de dígitos pequenos (horário, contador de memória). |
+| `tests/unit/seven-segment-validate.test.ts` | `validateDecodedNumber`: limites 1–999, rejeição da leitura inteira se qualquer dígito for ambíguo, contagem de dígitos fora da faixa (máx. 3). |
 
 Executado nesta entrega: `npm run lint`, `npm run typecheck` (via
 `tsc --noEmit` e também dentro de `next build`), `npm run build` e
@@ -89,6 +92,21 @@ por que a verificação usou uma queda real do servidor em vez de
 interceptam de forma confiável requisições originadas de dentro do
 próprio service worker) em "Service worker e cache",
 `docs/architecture.md`.
+
+### Testes de integração do leitor de 7 segmentos
+
+`tests/integration/` (config própria, `vitest.integration.config.ts`,
+rodada via `npm run test:integration`) cobre o `SevenSegmentOcrProvider`
+fim a fim contra imagens sintéticas de display de 7 segmentos desenhadas
+em memória (nunca fotos reais de pacientes) — nunca contra
+`tests/unit/`, porque precisam do OpenCV.js real (WASM) e de um
+`<canvas>` real em Node (pacote `canvas`), mais lentos que o resto da
+suíte. **Esta parte não pôde ser executada nem validada nesta sandbox**
+(sem instalação real de dependências, ver limitação de ambiente
+descrita no início deste arquivo) — precisa ser rodada e calibrada num
+ambiente real antes de confiar no resultado numérico; o teste de
+robustez (`recognize()` nunca lança exceção) é a única garantia que não
+depende de o WASM carregar corretamente nesse ambiente específico.
 
 ## O que ainda não existe
 

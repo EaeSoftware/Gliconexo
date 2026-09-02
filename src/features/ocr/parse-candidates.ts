@@ -1,3 +1,7 @@
+/** Faixa válida de `value_mg_dl` (CLAUDE.md, seção 11.3). Compartilhada por todos os providers de OCR. */
+export const MIN_VALUE = 1;
+export const MAX_VALUE = 999;
+
 /**
  * Extrai candidatos numéricos plausíveis (1–999, mesmo intervalo válido
  * de `value_mg_dl`) de um texto bruto reconhecido por OCR. Números fora
@@ -9,7 +13,7 @@ export function parseNumericCandidates(rawText: string): number[] {
   const matches = rawText.match(/\d+/g) ?? [];
   const numbers = matches
     .map((match) => Number(match))
-    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 999);
+    .filter((value) => Number.isInteger(value) && value >= MIN_VALUE && value <= MAX_VALUE);
   return Array.from(new Set(numbers));
 }
 

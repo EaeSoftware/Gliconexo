@@ -100,7 +100,87 @@ interface OcrProvider {
 }
 ```
 
-`src/features/ocr/tesseract-provider.ts` implementa essa interface com
+O provider ativo em `CameraCaptureFlow` é
+`src/features/ocr/seven-segment/seven-segment-provider.ts`
+(`SevenSegmentOcrProvider`), dedicado a displays LCD de 7 segmentos
+(glicosímetros digitais tipo Accu-Chek). Ele existe porque um OCR
+genérico, mesmo restrito a dígitos, tende a confundir o número grande
+central com números pequenos do mesmo visor (horário, contador de
+memória). Todo o pipeline roda no navegador via
+[OpenCV.js](https://github.com/TechStark/opencv-js) (WASM) — nenhuma
+foto é enviada a um servidor, mesma regra do Tesseract.js abaixo.
+Detalhado em `src/features/ocr/seven-segment/`:
+
+1. **`detect-display.ts`** — detecta o quadrilátero do visor dentro do
+   recorte que o usuário já fez manualmente em `image-editor.tsx` (não
+   na foto inteira: um humano já excluiu mesa/corpo do aparelho, o que
+   torna essa etapa muito mais robusta). Se não achar um quadrilátero
+   confiável, retorna `null` sem lançar erro — a etapa seguinte
+   simplesmente não corrige perspectiva.
+2. **`correct-perspective.ts`** — `getPerspectiveTransform`/
+   `warpPerspective` para endireitar o visor, quando um quadrilátero foi
+   encontrado.
+3. **`crop-main-reading.ts`** — agrupa contornos por linha (posição e
+   altura verticais similares) e pontua cada grupo por área relativa,
+   centralidade e penalidade por mais de 3 dígitos (leituras válidas são
+   1–999) para escolher o cluster do número grande, ignorando relógio e
+   contador de memória. `pickBestCluster`/`clusterContoursByRow`/
+   `scoreCluster` são funções puras, testadas sem OpenCV
+   (`tests/unit/seven-segment-cluster.test.ts`).
+4. **`preprocess-display.ts`** — ponte `cv.Mat` ↔ `PixelBuffer`;
+   reaproveita o mesmo `preprocess.ts`/`THRESHOLD_LEVELS` já usado pelo
+   Tesseract, em vez de duplicar a lógica de contraste/limiar em OpenCV.
+5. **`detect-digits.ts`** — segmenta a ROI binarizada em células de
+   dígito individuais, fundindo fragmentos próximos (ex.: os dois traços
+   do "4").
+6. **`decode-seven-segment.ts`** — pura, sem OpenCV: amostra os 7
+   segmentos de cada célula e decodifica via `SEGMENT_DIGIT_TABLE`.
+   Nunca "chuta": qualquer padrão fora da tabela (ponto decimal, ícone de
+   bateria, traço/sinal negativo) vira `null`. Testada em
+   `tests/unit/seven-segment-decode.test.ts`.
+7. **`validate-result.ts`** — rejeita a leitura inteira se qualquer
+   dígito for `null` ou o valor final ficar fora de 1–999 (mesmo range
+   de `parse-candidates.ts`). Testada em
+   `tests/unit/seven-segment-validate.test.ts`.
+8. **`ocr-fallback.ts`** — se a decodificação por segmentos falhar em
+   todos os níveis de limiar, cai para o `TesseractOcrProvider` já
+   existente (item abaixo), chamado **só com a ROI já recortada** do
+   número grande — nunca a foto inteira.
+
+`SevenSegmentOcrProvider.recognize()` nunca rejeita a Promise: qualquer
+exceção em qualquer etapa (falha ao carregar o WASM, imagem
+inadequada) resolve com `{ value: null, confidence: 0 }`, para que uma
+falha de OCR nunca impeça a digitação manual (CLAUDE.md, regra de
+negócio 15) — a tela de confirmação (`ManualEntryForm`) já trata esse
+caso hoje. `SevenSegmentOcrProvider` chama `recognize()` diretamente em
+`CameraCaptureFlow`, sem passar por `run-ocr-pipeline.ts`: ele já faz seu
+próprio laço de níveis de limiar internamente, depois de recortar o
+número grande (mais preciso que testar limiares antes desse recorte).
+`run-ocr-pipeline.ts` continua existindo, usado pelos testes do
+`TesseractOcrProvider` legado e disponível para um futuro provider mais
+simples.
+
+**Carregamento do OpenCV.js:** `opencv-loader.ts` importa
+`@techstark/opencv-js` via `import()` dinâmico dentro de `loadOpenCv()`
+— só baixa o chunk (alguns megabytes) na primeira vez que o usuário
+efetivamente abre a câmera, nunca no bundle principal (mesma regra do
+Tesseract.js abaixo). Diferente do Tesseract.js, que busca seu motor de
+um CDN de terceiros, `@techstark/opencv-js` é um pacote npm normal:
+o bundler do Next.js resolve e serve o `.wasm` a partir do próprio
+domínio da aplicação (`_next/static/...`), então já é coberto pela regra
+`cache-first` existente do service worker para esse prefixo, sem
+precisar de nenhuma exceção nova em `public/sw.js`. **Pendência real:**
+isso não foi validado rodando de fato (bundling de `.wasm` via
+webpack/Turbopack é uma área historicamente cheia de armadilhas) —
+precisa de um smoke test manual num navegador real antes de confiar
+nessa etapa, e os testes de integração de
+`tests/integration/seven-segment-provider.test.ts` (que exercitam o
+pipeline completo com OpenCV.js real) também não puderam ser executados
+nesta sandbox — ver `docs/testing.md`.
+
+`src/features/ocr/tesseract-provider.ts` (`TesseractOcrProvider`)
+continua existindo como implementação alternativa de `OcrProvider` e
+como fallback interno do provider de 7 segmentos, com
 [Tesseract.js](https://tesseract.projectnaptha.com/), atrás da mesma
 interface sugerida em `CLAUDE.md` (seção 6) — trocar de motor de OCR no
 futuro não deve exigir reescrever a tela de captura. Decisões
@@ -189,7 +269,10 @@ Estratégias por rota, implementadas no listener `fetch`:
 - **Nunca intercepta origem cruzada** (`url.origin !== self.location.origin`
   faz o `fetch` handler devolver o controle ao navegador sem tocar na
   requisição) — protege explicitamente o download do motor/modelo do
-  Tesseract.js via CDN de qualquer interferência do service worker.
+  Tesseract.js via CDN de qualquer interferência do service worker. O
+  WASM do OpenCV.js (usado pelo leitor de 7 segmentos, ver "Câmera e
+  OCR") não precisa dessa exceção: é servido same-origin via
+  `_next/static/`, já coberto pela regra `cache-first` acima.
 - Só requisições `GET` são interceptadas; qualquer outro método passa
   direto.
 

@@ -6,27 +6,31 @@ import { getDb } from "@/lib/db/schema";
 import { filterMeasurements, type PeriodFilter } from "@/features/measurements/filter-measurements";
 import { PeriodSelect } from "@/features/measurements/components/period-select";
 import { buildMeasurementsCsv } from "@/features/reports/csv";
+import { buildMeasurementsPdf } from "@/features/reports/pdf";
+import { captureChartImage } from "@/features/reports/capture-chart-image";
+import { periodFilenamePart } from "@/features/reports/filename";
+import { computeMeasurementStats, computeRangeDistribution } from "@/features/measurements/stats";
 import { formatMeasurementCount } from "@/features/measurements/pluralize";
-import { shareOrDownloadFile, canShareFiles } from "@/lib/export/download-file";
+import { shareOrDownloadFile } from "@/lib/export/download-file";
+import { useCanShareFiles } from "@/lib/export/use-can-share-files";
 import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/ui/text-field";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { FileText } from "lucide-react";
-
-function periodFilenamePart(period: PeriodFilter): string {
-  if (period === "all") return "tudo";
-  return `${period}dias`;
-}
 
 export function ExportPanel() {
   const [period, setPeriod] = useState<PeriodFilter>(30);
   const [includeNotes, setIncludeNotes] = useState(false);
+  const [identification, setIdentification] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const canShare = useCanShareFiles();
 
   const measurements = useLiveQuery(
     () => getDb().measurements.filter((m) => !m.deletedAt).toArray(),
     [],
   );
+  const preferences = useLiveQuery(() => getDb().preferences.get("local"), []);
 
   if (measurements === undefined) {
     return (
@@ -76,10 +80,56 @@ export function ExportPanel() {
     }
   }
 
+  async function handleExportPdf() {
+    setIsExporting(true);
+    setStatus(null);
+    try {
+      const targetRange = preferences ?? null;
+      const chartImageDataUrl = await captureChartImage(filtered, targetRange);
+      const pdfBlob = await buildMeasurementsPdf(
+        filtered,
+        {
+          stats: computeMeasurementStats(filtered),
+          distribution: computeRangeDistribution(filtered, targetRange),
+        },
+        {
+          includeNotes,
+          identification: identification.trim() || undefined,
+          period,
+          targetRange,
+          chartImageDataUrl,
+        },
+      );
+      const today = new Intl.DateTimeFormat("sv-SE").format(new Date());
+      const result = await shareOrDownloadFile(
+        {
+          content: pdfBlob,
+          filename: `gliconexo-relatorio-${periodFilenamePart(period)}-${today}.pdf`,
+          mimeType: "application/pdf",
+        },
+        { title: "Relatório GlicoNexo" },
+      );
+
+      if (result === "shared") setStatus("Arquivo compartilhado.");
+      else if (result === "downloaded") setStatus("Arquivo PDF baixado.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-border bg-surface p-4">
         <PeriodSelect value={period} onChange={setPeriod} />
+
+        <div className="mt-3">
+          <TextField
+            label="Identificação (opcional)"
+            hint="Aparece no cabeçalho do PDF. Não é salva — vale só para este relatório."
+            value={identification}
+            onChange={(event) => setIdentification(event.target.value)}
+          />
+        </div>
 
         <label className="mt-3 flex items-center gap-2 text-sm text-foreground/80">
           <input
@@ -102,7 +152,15 @@ export function ExportPanel() {
             disabled={isExporting || filtered.length === 0}
             onClick={handleExportCsv}
           >
-            {canShareFiles() ? "Compartilhar CSV" : "Baixar CSV"}
+            {canShare ? "Compartilhar CSV" : "Baixar CSV"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isExporting || filtered.length === 0}
+            onClick={handleExportPdf}
+          >
+            {canShare ? "Compartilhar PDF" : "Baixar PDF"}
           </Button>
         </div>
 
@@ -112,11 +170,6 @@ export function ExportPanel() {
           </p>
         ) : null}
       </div>
-
-      <p className="text-xs text-foreground/50">
-        Exportação em PDF ainda não foi implementada — disponível em uma
-        próxima etapa do desenvolvimento (Fase 7).
-      </p>
     </div>
   );
 }

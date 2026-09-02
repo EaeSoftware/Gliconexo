@@ -82,9 +82,7 @@ export function CameraPreview({ onCapture, onCancel, onUnavailable }: CameraPrev
           </div>
         ) : null}
       </div>
-      <p className="text-center text-sm text-foreground/60">
-        Alinhe o visor do glicosímetro dentro da moldura.
-      </p>
+      <p className="text-center text-sm text-foreground/60">Enquadre apenas o visor.</p>
       <div className="flex gap-3">
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
           Cancelar

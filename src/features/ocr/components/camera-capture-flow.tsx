@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { CameraPreview } from "@/features/ocr/components/camera-preview";
 import { FilePickerButton } from "@/features/ocr/components/file-picker-button";
 import { ImageEditor } from "@/features/ocr/components/image-editor";
-import { TesseractOcrProvider, type OcrProgress } from "@/features/ocr/tesseract-provider";
-import { runOcrPipeline } from "@/features/ocr/run-ocr-pipeline";
+import type { OcrProgress } from "@/features/ocr/tesseract-provider";
+import { SevenSegmentOcrProvider } from "@/features/ocr/seven-segment/seven-segment-provider";
+import type { OpenCvProgress } from "@/features/ocr/seven-segment/opencv-loader";
 import type { OcrResult } from "@/features/ocr/types";
 import { ManualEntryForm } from "@/features/measurements/components/manual-entry-form";
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
@@ -29,12 +30,14 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
   const [ocrProgressText, setOcrProgressText] = useState<string>("Preparando...");
 
-  const providerRef = useRef<TesseractOcrProvider | null>(null);
+  const providerRef = useRef<SevenSegmentOcrProvider | null>(null);
 
   function getProvider() {
     if (!providerRef.current) {
-      providerRef.current = new TesseractOcrProvider((progress: OcrProgress) => {
-        setOcrProgressText(describeProgress(progress));
+      providerRef.current = new SevenSegmentOcrProvider({
+        onProgress: (progress: OpenCvProgress | OcrProgress) => {
+          setOcrProgressText(describeProgress(progress));
+        },
       });
     }
     return providerRef.current;
@@ -83,7 +86,12 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
     setOcrProgressText("Preparando reconhecimento...");
 
     try {
-      const result = await runOcrPipeline(croppedBlob, getProvider());
+      // Chama o provider diretamente: SevenSegmentOcrProvider já faz seu
+      // próprio loop de níveis de limiar internamente, depois de detectar
+      // e recortar o visor — não precisa do loop genérico de
+      // `runOcrPipeline` (que continua existindo, usado pelo
+      // TesseractOcrProvider legado e por seus próprios testes).
+      const result = await getProvider().recognize(croppedBlob);
       setOcrResult(result);
     } catch {
       setOcrResult({ value: null, confidence: 0, candidates: [], engineVersion: "" });
@@ -220,15 +228,18 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   return null;
 }
 
-function describeProgress(progress: OcrProgress): string {
+function describeProgress(progress: OpenCvProgress | OcrProgress): string {
+  if (progress.status === "loading") return "Carregando mecanismo de leitura...";
+  if (progress.status === "ready") return "Preparando reconhecimento...";
+
   const percent = Math.round(progress.progress * 100);
   switch (progress.status) {
     case "loading tesseract core":
-      return `Carregando mecanismo de OCR... ${percent}%`;
+      return `Carregando mecanismo de OCR alternativo... ${percent}%`;
     case "initializing tesseract":
-      return "Inicializando OCR...";
+      return "Inicializando OCR alternativo...";
     case "loading language traineddata":
-      return `Baixando modelo de reconhecimento... ${percent}%`;
+      return `Baixando modelo de reconhecimento alternativo... ${percent}%`;
     case "initializing api":
       return "Preparando reconhecimento...";
     case "recognizing text":

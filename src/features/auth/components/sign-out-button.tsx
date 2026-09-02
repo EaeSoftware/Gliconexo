@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { SettingsButtonRow } from "@/components/ui/settings-row";
 
 export function SignOutButton() {
   const router = useRouter();
@@ -21,8 +22,12 @@ export function SignOutButton() {
   }
 
   return (
-    <Button type="button" variant="outline" disabled={isLoading} onClick={onSignOut}>
-      {isLoading ? "Saindo..." : "Sair"}
-    </Button>
+    <SettingsButtonRow
+      icon={LogOut}
+      label={isLoading ? "Saindo..." : "Sair"}
+      tone="danger"
+      disabled={isLoading}
+      onClick={onSignOut}
+    />
   );
 }

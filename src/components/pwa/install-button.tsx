@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { useStandaloneDisplay } from "@/lib/pwa/use-standalone-display";
+import { SettingsButtonRow, SettingsStaticRow } from "@/components/ui/settings-row";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -24,17 +25,25 @@ export function InstallPwaButton() {
   }, []);
 
   if (isStandalone) {
-    return <p className="text-sm text-foreground/70">O aplicativo já está instalado neste dispositivo.</p>;
+    return (
+      <SettingsStaticRow
+        icon={Download}
+        label="Instalar aplicativo"
+        description="Já instalado neste dispositivo"
+        tone="muted"
+      />
+    );
   }
 
   if (!installEvent) {
     return (
-      <p className="text-sm text-foreground/70">
-        No iOS, toque em compartilhar{" "}
-        <span aria-hidden="true">⎋</span> e depois em &ldquo;Adicionar à Tela
-        de Início&rdquo;. No Android/desktop, o navegador oferecerá a opção
-        de instalar quando disponível.
-      </p>
+      <SettingsStaticRow
+        icon={Download}
+        label="Instalar aplicativo"
+        description={
+          'No iOS: toque em compartilhar e depois em "Adicionar à Tela de Início". No Android/desktop, o navegador oferecerá a opção quando disponível.'
+        }
+      />
     );
   }
 
@@ -46,8 +55,12 @@ export function InstallPwaButton() {
   }
 
   return (
-    <Button type="button" variant="outline" onClick={handleInstall}>
-      Instalar aplicativo
-    </Button>
+    <SettingsButtonRow
+      icon={Download}
+      label="Instalar aplicativo"
+      description="Adicione o GlicoNexo à tela inicial"
+      onClick={handleInstall}
+      trailing="Instalar"
+    />
   );
 }

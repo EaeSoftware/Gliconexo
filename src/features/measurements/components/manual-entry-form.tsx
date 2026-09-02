@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLiveQuery } from "dexie-react-hooks";
 import Link from "next/link";
 import { measurementSchema, type MeasurementInput } from "@/features/measurements/schemas";
 import {
@@ -12,6 +13,9 @@ import {
   MEAL_RELATION_LABELS,
 } from "@/features/measurements/constants";
 import { measurementRepository, type GlucoseMeasurement } from "@/lib/db/measurement-repository";
+import { getDb } from "@/lib/db/schema";
+import { classifyValue } from "@/features/measurements/classify";
+import { ClassificationBadge } from "@/features/measurements/components/classification-badge";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 
@@ -66,6 +70,7 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
 
   const [saved, setSaved] = useState<GlucoseMeasurement | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const preferences = useLiveQuery(() => getDb().preferences.get("local"), []);
   const {
     register,
     handleSubmit,
@@ -108,9 +113,13 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
   }
 
   if (saved) {
+    const classification = classifyValue(saved.valueMgDl, preferences ?? null);
     return (
       <div role="status" className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5">
-        <p className="font-semibold text-foreground">Medição salva: {saved.valueMgDl} mg/dL</p>
+        <div className="flex items-center gap-2">
+          <p className="font-semibold text-foreground">Medição salva: {saved.valueMgDl} mg/dL</p>
+          {classification ? <ClassificationBadge classification={classification} /> : null}
+        </div>
         <p className="text-sm text-foreground/70">
           Salva neste dispositivo. A sincronização com a nuvem será
           habilitada quando a conta do banco de dados estiver configurada.

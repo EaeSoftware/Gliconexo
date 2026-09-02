@@ -60,16 +60,31 @@ export async function cropImageUrl(sourceUrl: string, rect: CropRectPercent): Pr
   return toBlob(canvas);
 }
 
-/** Extrai o `ImageData` (pixels) de uma imagem, para o pipeline de pré-processamento. */
-export async function loadImageDataFromUrl(sourceUrl: string): Promise<ImageData> {
+/**
+ * Extrai o `ImageData` (pixels) de uma imagem, para o pipeline de
+ * pré-processamento. Recortes de visor costumam ser pequenos, então a
+ * imagem é ampliada até `minDimension` (na menor dimensão) porque o OCR
+ * de dígitos de 7 segmentos melhora muito com glifos maiores.
+ */
+export async function loadImageDataFromUrl(
+  sourceUrl: string,
+  minDimension = 400,
+): Promise<ImageData> {
   const img = await loadImage(sourceUrl);
+  const shorterSide = Math.min(img.naturalWidth, img.naturalHeight);
+  const scale = shorterSide > 0 && shorterSide < minDimension ? minDimension / shorterSide : 1;
+  const width = Math.round(img.naturalWidth * scale);
+  const height = Math.round(img.naturalHeight * scale);
+
   const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
+  canvas.width = width;
+  canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas indisponível.");
-  context.drawImage(img, 0, 0);
-  return context.getImageData(0, 0, canvas.width, canvas.height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(img, 0, 0, width, height);
+  return context.getImageData(0, 0, width, height);
 }
 
 /** Converte um `ImageData` (ou compatível) de volta para um blob JPEG. */

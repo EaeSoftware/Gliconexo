@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDb } from "@/lib/db/schema";
 import { buildAllDataExport } from "@/features/privacy/export-all-data";
-import { shareOrDownloadFile, canShareFiles } from "@/lib/export/download-file";
+import { shareOrDownloadFile } from "@/lib/export/download-file";
+import { useCanShareFiles } from "@/lib/export/use-can-share-files";
 import { Button } from "@/components/ui/button";
 
 export function ExportAllDataButton() {
   const [isExporting, setIsExporting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const canShare = useCanShareFiles();
 
   const measurements = useLiveQuery(() => getDb().measurements.toArray(), []);
   const preferences = useLiveQuery(() => getDb().preferences.get("local"), []);
@@ -44,7 +46,7 @@ export function ExportAllDataButton() {
         disabled={isExporting || measurements === undefined}
         onClick={handleExport}
       >
-        {canShareFiles() ? "Compartilhar todos os dados" : "Exportar todos os dados"}
+        {canShare ? "Compartilhar todos os dados" : "Exportar todos os dados"}
       </Button>
       {status ? (
         <p role="status" className="text-sm text-status-within">

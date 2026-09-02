@@ -21,7 +21,7 @@ export function BottomNav() {
 
           if (isPrimary) {
             return (
-              <li key={item.href} className="relative flex items-center justify-center">
+              <li key={item.href} className="relative flex min-h-14 items-center justify-center">
                 <Link
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
@@ -37,11 +37,11 @@ export function BottomNav() {
           }
 
           return (
-            <li key={item.href}>
+            <li key={item.href} className="flex min-h-14 items-stretch justify-center">
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${
+                className={`flex w-full flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${
                   isActive ? "text-brand-blue" : "text-foreground/60"
                 }`}
               >

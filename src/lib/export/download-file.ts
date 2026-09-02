@@ -1,5 +1,5 @@
 export type ExportableFile = {
-  content: string;
+  content: BlobPart;
   filename: string;
   mimeType: string;
 };

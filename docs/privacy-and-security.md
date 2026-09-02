@@ -27,19 +27,25 @@ inicial, no onboarding e nas telas do app.
 - Formulário de recuperação de senha sempre mostra uma mensagem genérica,
   para não confirmar se um e-mail existe na base.
 - **Câmera e OCR**: a foto é processada inteiramente no navegador
-  (Tesseract.js local) e **nunca é enviada a nenhum servidor** nem
-  persistida — existe só como `Blob`/object URL em memória enquanto o
-  usuário está na tela de captura, revogado ao salvar, cancelar ou
-  tentar novamente (`src/features/ocr/components/camera-capture-flow.tsx`).
-  A permissão da câmera só é solicitada quando o usuário toca em
-  "Fotografar", nunca antes.
-- **Dependência de terceiros documentada**: na primeira vez que o OCR
-  roda em cada dispositivo, o navegador baixa o motor (WebAssembly) e o
-  modelo de idioma do CDN público do Tesseract.js
+  (leitor de 7 segmentos via OpenCV.js local, com fallback Tesseract.js
+  local) e **nunca é enviada a nenhum servidor** nem persistida — existe
+  só como `Blob`/object URL/`cv.Mat` em memória enquanto o usuário está
+  na tela de captura, revogado/liberado ao salvar, cancelar ou tentar
+  novamente (`src/features/ocr/components/camera-capture-flow.tsx`). A
+  permissão da câmera só é solicitada quando o usuário toca em
+  "Fotografar", nunca antes. Nenhum resultado intermediário é "chutado":
+  se a confiança for insuficiente, o leitor retorna sem valor e a
+  confirmação manual (obrigatória em qualquer caso) assume.
+- **Dependência de terceiros documentada**: na primeira vez que o
+  fallback de OCR roda em cada dispositivo, o navegador baixa o motor
+  (WebAssembly) e o modelo de idioma do CDN público do Tesseract.js
   (`cdn.jsdelivr.net`) — configuração padrão da biblioteca. Nenhum dado
   do usuário (foto, valor, observação) é enviado nessa chamada, só o
-  próprio código/modelo do motor é baixado. Ver `docs/architecture.md`
-  ("Câmera e OCR").
+  próprio código/modelo do motor é baixado. O WASM do OpenCV.js (leitor
+  de 7 segmentos, usado antes desse fallback) **não** tem essa
+  dependência de terceiros — é servido pelo próprio domínio da
+  aplicação, como qualquer outro asset do bundle. Ver
+  `docs/architecture.md` ("Câmera e OCR").
 - Exportação de dados (CSV/JSON) sai do dispositivo apenas por ação
   explícita do usuário (botão de exportar), via download comum ou pela
   Web Share API nativa — nunca automaticamente, nunca para um servidor

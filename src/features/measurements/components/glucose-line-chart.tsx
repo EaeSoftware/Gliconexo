@@ -56,12 +56,38 @@ function CustomTooltip({
   );
 }
 
+type GlucoseLineChartColors = {
+  border: string;
+  foreground: string;
+  statusWithin: string;
+  brandBlue: string;
+};
+
+const DEFAULT_COLORS: GlucoseLineChartColors = {
+  border: "var(--color-border)",
+  foreground: "var(--color-foreground)",
+  statusWithin: "var(--color-status-within)",
+  brandBlue: "var(--color-brand-blue)",
+};
+
 type GlucoseLineChartProps = {
   measurements: GlucoseMeasurement[];
   targetRange: TargetRange | null;
+  /**
+   * Cores resolvidas em vez das variáveis CSS padrão. Usado ao
+   * rasterizar o gráfico para o PDF: uma `<img>` carregada a partir de
+   * um SVG serializado não herda `var(--...)` do documento, então o
+   * captador de imagem para PDF resolve os valores reais antes de
+   * renderizar (ver `features/reports/capture-chart-image.ts`).
+   */
+  colors?: GlucoseLineChartColors;
 };
 
-export default function GlucoseLineChart({ measurements, targetRange }: GlucoseLineChartProps) {
+export default function GlucoseLineChart({
+  measurements,
+  targetRange,
+  colors = DEFAULT_COLORS,
+}: GlucoseLineChartProps) {
   const data: ChartPoint[] = [...measurements]
     .sort((a, b) => new Date(a.measuredAt).getTime() - new Date(b.measuredAt).getTime())
     .map((measurement) => ({
@@ -81,13 +107,13 @@ export default function GlucoseLineChart({ measurements, targetRange }: GlucoseL
             type="number"
             domain={["dataMin", "dataMax"]}
             tickFormatter={formatAxisDate}
-            stroke="var(--color-border)"
-            tick={{ fill: "var(--color-foreground)", fontSize: 12 }}
+            stroke={colors.border}
+            tick={{ fill: colors.foreground, fontSize: 12 }}
           />
           <YAxis
             domain={[0, "dataMax + 40"]}
-            stroke="var(--color-border)"
-            tick={{ fill: "var(--color-foreground)", fontSize: 12 }}
+            stroke={colors.border}
+            tick={{ fill: colors.foreground, fontSize: 12 }}
             width={40}
           />
           <Tooltip content={<CustomTooltip />} />
@@ -96,7 +122,7 @@ export default function GlucoseLineChart({ measurements, targetRange }: GlucoseL
             <ReferenceArea
               y1={targetRange.targetMinMgDl}
               y2={targetRange.targetMaxMgDl}
-              fill="var(--color-status-within)"
+              fill={colors.statusWithin}
               fillOpacity={0.12}
               stroke="none"
             />
@@ -104,12 +130,12 @@ export default function GlucoseLineChart({ measurements, targetRange }: GlucoseL
           {hasRange ? (
             <ReferenceLine
               y={targetRange.targetMinMgDl}
-              stroke="var(--color-status-within)"
+              stroke={colors.statusWithin}
               strokeDasharray="4 4"
               label={{
                 value: "Mínimo da faixa",
                 position: "insideBottomLeft",
-                fill: "var(--color-status-within)",
+                fill: colors.statusWithin,
                 fontSize: 11,
               }}
             />
@@ -117,12 +143,12 @@ export default function GlucoseLineChart({ measurements, targetRange }: GlucoseL
           {hasRange ? (
             <ReferenceLine
               y={targetRange.targetMaxMgDl}
-              stroke="var(--color-status-within)"
+              stroke={colors.statusWithin}
               strokeDasharray="4 4"
               label={{
                 value: "Máximo da faixa",
                 position: "insideTopLeft",
-                fill: "var(--color-status-within)",
+                fill: colors.statusWithin,
                 fontSize: 11,
               }}
             />
@@ -131,9 +157,9 @@ export default function GlucoseLineChart({ measurements, targetRange }: GlucoseL
           <Line
             type="monotone"
             dataKey="value"
-            stroke="var(--color-brand-blue)"
+            stroke={colors.brandBlue}
             strokeWidth={2}
-            dot={{ r: 3, fill: "var(--color-brand-blue)" }}
+            dot={{ r: 3, fill: colors.brandBlue }}
             activeDot={{ r: 5 }}
             isAnimationActive={false}
           />

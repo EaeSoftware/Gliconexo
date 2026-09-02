@@ -2,7 +2,8 @@ import { loadImageDataFromUrl, imageDataToBlob } from "@/features/ocr/canvas-uti
 import { preprocessForThreshold, THRESHOLD_LEVELS } from "@/features/ocr/preprocess";
 import type { OcrProvider, OcrResult } from "@/features/ocr/types";
 
-const HIGH_CONFIDENCE = 0.85;
+/** Confiança a partir da qual paramos de testar outros níveis de limiar. Compartilhada por outros providers. */
+export const HIGH_CONFIDENCE = 0.85;
 
 const EMPTY_RESULT: OcrResult = { value: null, confidence: 0, candidates: [], engineVersion: "" };
 
