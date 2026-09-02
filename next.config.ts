@@ -40,6 +40,21 @@ async function securityHeaders() {
 
 const nextConfig: NextConfig = {
   headers: securityHeaders,
+  // O @techstark/opencv-js (código Emscripten, usado pelo leitor de 7
+  // segmentos em src/features/ocr/seven-segment/) faz `require("fs")`/
+  // `require("path")`/`require("crypto")` num branch só executado em
+  // Node — mas o Turbopack ainda precisa resolver esses imports
+  // estaticamente ao empacotar para o navegador. Aponta os três para um
+  // módulo vazio só no bundle de cliente (equivalente ao
+  // `resolve.fallback` do webpack, que o próprio README do pacote
+  // recomenda).
+  turbopack: {
+    resolveAlias: {
+      fs: { browser: "./empty-node-module.js" },
+      path: { browser: "./empty-node-module.js" },
+      crypto: { browser: "./empty-node-module.js" },
+    },
+  },
 };
 
 export default nextConfig;
