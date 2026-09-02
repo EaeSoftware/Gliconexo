@@ -18,11 +18,23 @@ export function parseNumericCandidates(rawText: string): number[] {
 }
 
 /**
- * Escolhe o candidato mais provável entre os encontrados. Hoje é
- * apenas o primeiro candidato (ordem de leitura), mas fica isolado
- * numa função própria para permitir refinar a heurística sem mexer na
- * tela de captura.
+ * Escolhe o candidato mais provável entre os encontrados. O visor do
+ * glicosímetro mostra o valor com 2 ou 3 dígitos; ruído do OCR (traços,
+ * pontos, bordas do visor) costuma virar dígitos avulsos de 1 dígito
+ * antes ou depois do número real. Por isso prioriza o candidato com
+ * mais dígitos, e só usa a ordem de leitura como desempate.
  */
 export function pickBestCandidate(candidates: number[]): number | null {
-  return candidates.length > 0 ? candidates[0] : null;
+  if (candidates.length === 0) return null;
+
+  let best = candidates[0];
+  let bestDigitCount = String(best).length;
+  for (const candidate of candidates.slice(1)) {
+    const digitCount = String(candidate).length;
+    if (digitCount > bestDigitCount) {
+      best = candidate;
+      bestDigitCount = digitCount;
+    }
+  }
+  return best;
 }

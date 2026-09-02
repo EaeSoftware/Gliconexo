@@ -13,7 +13,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
           <Logo size="sm" />
           <ConnectionStatus />
         </header>
-        <main className="flex flex-1 flex-col pb-[calc(3.5rem+max(0.5rem,env(safe-area-inset-bottom))+1rem)] sm:pb-0">
+        <main className="flex flex-1 flex-col pb-[calc(4.5rem+max(0.75rem,env(safe-area-inset-bottom))+1rem)] sm:pb-0">
           {children}
         </main>
       </div>
