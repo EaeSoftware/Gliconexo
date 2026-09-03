@@ -38,6 +38,14 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
         onProgress: (progress: OpenCvProgress | OcrProgress) => {
           setOcrProgressText(describeProgress(progress));
         },
+        debug: {
+          onStage: (stage, dataUrl) => {
+            (window as unknown as { __ocrDebug?: Record<string, string[]> }).__ocrDebug ??= {};
+            const store = (window as unknown as { __ocrDebug: Record<string, string[]> }).__ocrDebug;
+            store[stage] = store[stage] ?? [];
+            store[stage].push(dataUrl);
+          },
+        },
       });
     }
     return providerRef.current;

@@ -28,29 +28,20 @@ type RecognizedWord = {
  */
 export class TesseractOcrProvider implements OcrProvider {
   private workerPromise: Promise<TesseractWorker> | null = null;
+  private currentPsm: PSM | null = null;
 
   constructor(private onProgress?: (progress: OcrProgress) => void) {}
 
   private async getWorker(): Promise<TesseractWorker> {
     if (!this.workerPromise) {
       this.workerPromise = (async () => {
-        const { createWorker, PSM } = await import("tesseract.js");
+        const { createWorker } = await import("tesseract.js");
         const worker = await createWorker("eng", undefined, {
           logger: (message) => this.onProgress?.({ status: message.status, progress: message.progress }),
         });
         await worker.setParameters({
           // Restringe o reconhecimento a dígitos, conforme CLAUDE.md 10.6.
           tessedit_char_whitelist: "0123456789",
-          // Este provider agora só roda como fallback do leitor de 7
-          // segmentos (ver seven-segment/ocr-fallback.ts), sempre sobre a
-          // ROI já recortada e isolada do número grande — não mais sobre o
-          // recorte inteiro do usuário, que podia ter várias linhas
-          // (horário, contador de memória). Nesse contexto, tratar como
-          // uma única linha evita que a segmentação automática (padrão,
-          // pensada para páginas de texto comuns) quebre os dígitos do
-          // mostrador em blocos separados e devolva um número diferente
-          // do exibido.
-          tessedit_pageseg_mode: PSM.SINGLE_LINE,
         });
         return worker;
       })();
@@ -58,8 +49,27 @@ export class TesseractOcrProvider implements OcrProvider {
     return this.workerPromise;
   }
 
+  /**
+   * `recognize` usa `SINGLE_LINE` por padrão — apropriado quando o
+   * chamador já isolou o número grande numa ROI (o caso comum via
+   * `OcrProvider`). `recognizeWithMode` permite ao fallback do leitor
+   * de 7 segmentos (ver `seven-segment/ocr-fallback.ts`) pedir
+   * `SPARSE_TEXT` quando cai de volta no recorte inteiro do usuário
+   * (várias linhas: horário, contador de memória, `mg/dL`, o número
+   * principal) — `SINGLE_LINE` nesse caso mistura tudo numa leitura
+   * sem sentido.
+   */
   async recognize(input: Blob): Promise<OcrResult> {
+    const { PSM } = await import("tesseract.js");
+    return this.recognizeWithMode(input, PSM.SINGLE_LINE);
+  }
+
+  async recognizeWithMode(input: Blob, psm: PSM): Promise<OcrResult> {
     const worker = await this.getWorker();
+    if (this.currentPsm !== psm) {
+      await worker.setParameters({ tessedit_pageseg_mode: psm });
+      this.currentPsm = psm;
+    }
     const { data } = await worker.recognize(input, {}, { blocks: true, text: true });
 
     const words = extractNumericWords(data.blocks);

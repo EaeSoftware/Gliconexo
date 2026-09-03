@@ -45,8 +45,19 @@ export type CvNamespace = {
   RETR_EXTERNAL: number;
   RETR_LIST: number;
   CHAIN_APPROX_SIMPLE: number;
+  THRESH_BINARY: number;
   THRESH_BINARY_INV: number;
   THRESH_OTSU: number;
+  ADAPTIVE_THRESH_GAUSSIAN_C: number;
+  adaptiveThreshold(
+    src: CvMat,
+    dst: CvMat,
+    maxValue: number,
+    adaptiveMethod: number,
+    thresholdType: number,
+    blockSize: number,
+    c: number,
+  ): void;
   matFromImageData(imageData: ImageData): CvMat;
   matFromArray(rows: number, cols: number, type: number, array: number[]): CvMat;
   cvtColor(src: CvMat, dst: CvMat, code: number): void;

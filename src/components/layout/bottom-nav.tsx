@@ -21,14 +21,14 @@ export function BottomNav() {
 
           if (isPrimary) {
             return (
-              <li key={item.href} className="relative flex min-h-[4.5rem] items-center justify-center">
+              <li key={item.href} className="flex min-h-[4.5rem] items-stretch justify-center">
                 <Link
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
-                  className="absolute -top-7 flex flex-col items-center gap-1.5 text-xs font-semibold text-brand-blue"
+                  className="flex w-full flex-col items-center justify-center gap-1.5 text-xs font-semibold text-brand-blue"
                 >
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand-blue to-brand-teal text-white shadow-md ring-4 ring-surface transition-transform active:scale-95">
-                    <Icon aria-hidden="true" size={28} strokeWidth={2.25} />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand-blue to-brand-teal text-white shadow-md transition-transform active:scale-95">
+                    <Icon aria-hidden="true" size={24} strokeWidth={2.25} />
                   </span>
                   {item.label}
                 </Link>

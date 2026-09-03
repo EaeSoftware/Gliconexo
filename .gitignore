@@ -38,6 +38,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# assets vendorizados em build/dev (ver scripts/copy-opencv-asset.mjs)
+/public/vendor/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

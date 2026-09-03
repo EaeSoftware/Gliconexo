@@ -1,8 +1,23 @@
 import type { CvNamespace } from "@/features/ocr/seven-segment/opencv-loader";
 import type { BBox, CvMat, DigitCluster } from "@/features/ocr/seven-segment/types";
 
+/** Menor ímpar >= `value`, com piso em `min` (exigido por `cv.adaptiveThreshold`). */
+function oddAtLeast(value: number, min: number): number {
+  const v = Math.max(value, min);
+  return v % 2 === 0 ? v + 1 : v;
+}
+
 /** Contornos mais baixos que isto (relativo à altura da ROI) são descartados como ruído/pontos/ícones. */
 export const MIN_GLYPH_HEIGHT_RATIO = 0.15;
+
+/**
+ * Contornos mais altos que isto (relativo à altura da ROI) são
+ * descartados como moldura/borda do visor, não dígito: um contorno de
+ * altura quase igual à da ROI inteira normalmente é o contraste entre
+ * a área acesa do LCD e a moldura ao redor, não um glifo — sem este
+ * filtro ele vence o `areaScore` de qualquer cluster de dígitos real.
+ */
+export const MAX_GLYPH_HEIGHT_RATIO = 0.85;
 
 /** Tolerância de diferença de centro vertical (relativa à altura do glifo) para agrupar na mesma linha. */
 export const ROW_Y_TOLERANCE_RATIO = 0.5;
@@ -45,7 +60,8 @@ function unionBBox(boxes: BBox[]): BBox {
  */
 export function clusterContoursByRow(boxes: BBox[], containerHeight: number): DigitCluster[] {
   const minHeight = MIN_GLYPH_HEIGHT_RATIO * containerHeight;
-  const filtered = boxes.filter((box) => box.height >= minHeight);
+  const maxHeight = MAX_GLYPH_HEIGHT_RATIO * containerHeight;
+  const filtered = boxes.filter((box) => box.height >= minHeight && box.height <= maxHeight);
   if (filtered.length === 0) return [];
 
   const sorted = [...filtered].sort((a, b) => bboxCenter(a).y - bboxCenter(b).y);
@@ -152,21 +168,53 @@ export function cropMatToBBox(mat: CvMat, bbox: BBox): CvMat {
  */
 export function findMainReadingCluster(cv: CvNamespace, mat: CvMat): DigitCluster | null {
   const gray = new cv.Mat();
+  const blurred = new cv.Mat();
   const thresholded = new cv.Mat();
   const contours = new cv.MatVector();
   const hierarchy = new cv.Mat();
 
   try {
     cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY);
-    cv.threshold(gray, thresholded, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+    // Borrão antes do limiar adaptativo: sem isso, textura fina (grão
+    // do plástico do aparelho, ruído JPEG, poeira) sobrevive ao corte
+    // local e gera dezenas de micro-contornos que disputam com os
+    // dígitos reais — o borrão apaga variações menores que um dígito
+    // sem apagar as bordas dos próprios dígitos (bem maiores).
+    cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+    // Limiar adaptativo (local), não Otsu (global): o recorte pode
+    // conter, além do LCD, a moldura escura do aparelho e/ou fundo
+    // claro (quando `detectDisplayQuad` não isola o visor). Um único
+    // corte global não separa "dígito escuro sobre LCD claro" E
+    // "moldura escura sobre fundo claro" ao mesmo tempo — cada região
+    // teria um ponto de corte ideal diferente. Um limiar recalculado
+    // por vizinhança captura o contraste local (dígito vs. LCD) onde
+    // quer que ele esteja no recorte.
+    const blockSize = oddAtLeast(Math.round(Math.min(mat.cols, mat.rows) / 4), 21);
+    cv.adaptiveThreshold(blurred, thresholded, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, blockSize, 10);
     cv.findContours(thresholded, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+
+    // Contornos que tocam a borda do recorte são a moldura/fundo do
+    // aparelho (ou o próprio contorno externo da imagem), nunca um
+    // dígito: a instrução da tela de recorte pede para o usuário
+    // cobrir só o visor, então um glifo real sempre fica com alguma
+    // margem interna. Esse filtro importa sobretudo quando
+    // `detectDisplayQuad` não isola o LCD (OTSU global então mistura o
+    // contraste do visor com o da moldura escura ao redor, produzindo
+    // um único contorno gigante em vez de dígitos separados).
+    const borderMargin = Math.max(2, Math.round(Math.min(mat.cols, mat.rows) * 0.01));
+    const touchesBorder = (box: BBox) =>
+      box.x <= borderMargin ||
+      box.y <= borderMargin ||
+      box.x + box.width >= mat.cols - borderMargin ||
+      box.y + box.height >= mat.rows - borderMargin;
 
     const boxes: BBox[] = [];
     for (let i = 0; i < contours.size(); i += 1) {
       const contour = contours.get(i);
       try {
         const rect = cv.boundingRect(contour);
-        boxes.push({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+        const box: BBox = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        if (!touchesBorder(box)) boxes.push(box);
       } finally {
         contour.delete();
       }
@@ -177,6 +225,7 @@ export function findMainReadingCluster(cv: CvNamespace, mat: CvMat): DigitCluste
     return pickBestCluster(clusters, containerBBox);
   } finally {
     gray.delete();
+    blurred.delete();
     thresholded.delete();
     contours.delete();
     hierarchy.delete();

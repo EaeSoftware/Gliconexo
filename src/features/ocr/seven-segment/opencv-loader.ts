@@ -1,23 +1,36 @@
 import type { CvNamespace } from "@/features/ocr/seven-segment/types";
 
 /**
- * Carregamento sob demanda do OpenCV.js (WASM). O `import()` só
- * acontece na primeira chamada de `loadOpenCv`, garantindo que o
- * pacote (alguns megabytes) fique num chunk separado, fora do bundle
- * principal — mesmo padrão do `tesseract.js` em `tesseract-provider.ts`.
+ * Carregamento sob demanda do OpenCV.js (WASM) via tag `<script>`
+ * estática, servida de `/vendor/opencv.js` (gerado a partir de
+ * `node_modules/@techstark/opencv-js` por `scripts/copy-opencv-asset.mjs`,
+ * rodado em `predev`/`prebuild`) — não por `import()` dinâmico.
  *
- * Ao contrário do Tesseract.js (que busca seu motor/modelos de um CDN
- * de terceiros), `@techstark/opencv-js` é um pacote npm normal: o
- * bundler do Next.js resolve e serve seu `.wasm` a partir do próprio
- * domínio da aplicação (`_next/static/...`), então o service worker já
- * o cobre via `cacheFirst()` para `/_next/static/` (ver `public/sw.js`)
- * sem precisar de nenhuma regra nova — diferente do OCR via CDN, que o
- * service worker deliberadamente não intercepta.
+ * Por quê não `import()`: o build do pacote (`dist/opencv.js`) é um
+ * UMD cujo `module.exports` final é a própria Promise retornada pela
+ * factory assíncrona do Emscripten (`cv(Module)`), não um objeto com
+ * propriedade `default`. O Turbopack (Next 16, dev) interpreta um CJS
+ * cujo `module.exports` resolvido é uma Promise como "async module" e
+ * tenta adotá-la — mas entrega um Module namespace object (exótico,
+ * sem os internal slots de Promise) onde esse protocolo espera um
+ * thenable real, o que lança `TypeError: Method Promise.prototype.then
+ * called on incompatible receiver [object Module]` antes mesmo do
+ * nosso código rodar. Carregar via `<script>` bypassa o sistema de
+ * módulos do bundler inteiramente para este pacote — o mesmo problema
+ * não existe em `window.cv` lido depois do `load` do script.
+ *
+ * O WASM vem embutido em base64 dentro do próprio `.js` (build
+ * `SINGLE_FILE` do Emscripten — não há `.wasm` separado no pacote), e
+ * o service worker cobre `/vendor/opencv.js` via `cacheFirst()` (ver
+ * `public/sw.js`, mesma regra de assets estáticos versionados).
  */
 
 export type { CvNamespace } from "@/features/ocr/seven-segment/types";
 
 export type OpenCvProgress = { status: "loading" | "ready" };
+
+const OPENCV_SCRIPT_URL = "/vendor/opencv.js";
+const OPENCV_SCRIPT_MARKER = "data-opencv-loader";
 
 let cvPromise: Promise<CvNamespace> | null = null;
 
@@ -30,8 +43,8 @@ export function loadOpenCv(onProgress?: (progress: OpenCvProgress) => void): Pro
   if (!cvPromise) {
     onProgress?.({ status: "loading" });
     cvPromise = (async () => {
-      const cvModule = (await import("@techstark/opencv-js")) as unknown;
-      const cv = await resolveCvNamespace(cvModule);
+      const rawCv = await loadOpenCvScript();
+      const cv = await resolveCvNamespace(rawCv);
       onProgress?.({ status: "ready" });
       return cv;
     })();
@@ -39,15 +52,38 @@ export function loadOpenCv(onProgress?: (progress: OpenCvProgress) => void): Pro
   return cvPromise;
 }
 
+/** Injeta (ou reaproveita) a tag `<script>` e resolve para `window.cv` assim que ela carrega. */
+function loadOpenCvScript(): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[${OPENCV_SCRIPT_MARKER}]`);
+    if (existing) {
+      if ((window as unknown as { cv?: unknown }).cv !== undefined) {
+        resolve((window as unknown as { cv?: unknown }).cv);
+        return;
+      }
+      existing.addEventListener("load", () => resolve((window as unknown as { cv?: unknown }).cv));
+      existing.addEventListener("error", () => reject(new Error("Falha ao carregar OpenCV.js")));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = OPENCV_SCRIPT_URL;
+    script.async = true;
+    script.setAttribute(OPENCV_SCRIPT_MARKER, "true");
+    script.addEventListener("load", () => resolve((window as unknown as { cv?: unknown }).cv));
+    script.addEventListener("error", () => reject(new Error("Falha ao carregar OpenCV.js")));
+    document.head.appendChild(script);
+  });
+}
+
 /**
  * O pacote suporta dois formatos de inicialização dependendo da versão:
  * o módulo já é uma Promise que resolve para `cv`, ou é o próprio
  * objeto `cv` que dispara `onRuntimeInitialized` quando o WASM termina
  * de carregar. Trata os dois casos (padrão documentado do pacote). O
- * valor bruto do módulo não é tipado pelo pacote de forma confiável
- * (ver nota em `types.ts`), então é tratado como `unknown` até aqui e
- * só convertido para `CvNamespace` (nossa interface estrutural mínima)
- * no final.
+ * valor bruto não é tipado de forma confiável (ver nota em
+ * `types.ts`), então é tratado como `unknown` até aqui e só convertido
+ * para `CvNamespace` (nossa interface estrutural mínima) no final.
  */
 async function resolveCvNamespace(cvModule: unknown): Promise<CvNamespace> {
   const candidate = isRecord(cvModule) && "default" in cvModule ? cvModule.default : cvModule;

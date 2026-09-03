@@ -75,14 +75,30 @@ export class SevenSegmentOcrProvider implements OcrProvider {
 
         const cluster = findMainReadingCluster(cv, mat);
         if (!cluster) {
-          return await this.recognizeWithFallback(mat);
+          // Sem cluster, o fallback roda sobre o recorte inteiro do
+          // usuário (pode ter horário, contador de memória, "mg/dL"
+          // além do número principal) — `SPARSE_TEXT` deixa o Tesseract
+          // segmentar essas várias regiões de texto em vez de tentar
+          // (e falhar) ler tudo como uma única linha.
+          return await this.recognizeWithFallback(mat, "sparse");
         }
 
         const roiMat = cropMatToBBox(mat, cluster.bbox);
         emitDebugStage(this.options.debug, "roi_numero", roiMat);
 
         try {
-          const decoded = this.decodeAcrossThresholds(cv, roiMat);
+          // A decodificação por segmentos usa Mats/operações nativas do
+          // OpenCV que podem lançar (não só retornar `null`) diante de
+          // um cluster degenerado (bbox implausível vindo da heurística
+          // de contornos) — trata isso como "falhou", não deixa a
+          // exceção escapar e pular o fallback de OCR genérico abaixo.
+          let decoded: { value: number | null; confidence: number };
+          try {
+            decoded = this.decodeAcrossThresholds(cv, roiMat);
+          } catch {
+            decoded = { value: null, confidence: 0 };
+          }
+
           if (decoded.value !== null) {
             return {
               value: decoded.value,
@@ -91,7 +107,7 @@ export class SevenSegmentOcrProvider implements OcrProvider {
               engineVersion: ENGINE_VERSION,
             };
           }
-          return await this.recognizeWithFallback(roiMat);
+          return await this.recognizeWithFallback(roiMat, "single-line");
         } finally {
           roiMat.delete();
         }
@@ -135,11 +151,14 @@ export class SevenSegmentOcrProvider implements OcrProvider {
     return best;
   }
 
-  /** Fallback: OCR genérico (Tesseract) restrito à ROI já recortada — nunca à foto inteira. */
-  private async recognizeWithFallback(roiMat: CvMat): Promise<OcrResult> {
+  /** Fallback: OCR genérico (Tesseract) sobre o mat recebido (ROI isolada, ou o recorte inteiro quando não há cluster). */
+  private async recognizeWithFallback(roiMat: CvMat, mode: "single-line" | "sparse"): Promise<OcrResult> {
     const buffer = matToPixelBuffer(roiMat);
     const roiBlob = await imageDataToBlob(buffer);
-    const result = await this.fallback.recognize(roiBlob);
+    const { PSM } = await import("tesseract.js");
+    const psm: PSM = mode === "sparse" ? PSM.SPARSE_TEXT : PSM.SINGLE_LINE;
+    const result = await this.fallback.recognize(roiBlob, psm);
+    console.warn("[ocr-debug] fallback result", mode, JSON.stringify(result));
     return { ...result, engineVersion: ENGINE_VERSION_WITH_FALLBACK };
   }
 
