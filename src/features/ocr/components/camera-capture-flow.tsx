@@ -237,8 +237,9 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
 }
 
 function describeProgress(progress: OpenCvProgress | OcrProgress): string {
-  if (progress.status === "loading") return "Carregando mecanismo de leitura...";
-  if (progress.status === "ready") return "Preparando reconhecimento...";
+  if (!("progress" in progress)) {
+    return progress.status === "loading" ? "Carregando mecanismo de leitura..." : "Preparando reconhecimento...";
+  }
 
   const percent = Math.round(progress.progress * 100);
   switch (progress.status) {

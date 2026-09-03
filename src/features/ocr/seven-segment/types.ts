@@ -71,6 +71,16 @@ export type CvNamespace = {
   threshold(src: CvMat, dst: CvMat, thresh: number, maxval: number, type: number): number;
   getPerspectiveTransform(src: CvMat, dst: CvMat): CvMat;
   warpPerspective(src: CvMat, dst: CvMat, transform: CvMat, dsize: unknown): void;
+  /**
+   * Desenha o `Mat` num `<canvas>`. Usado como via de leitura de pixels
+   * em vez de `mat.data` diretamente: builds do binding WASM (ver nota
+   * em `matToPixelBuffer`) podem devolver metadados de `step`/
+   * `isContinuous()` inconsistentes com o buffer real após
+   * `roi().clone()`, então `imshow` (caminho de I/O oficial do
+   * OpenCV.js, testado para lidar com stride corretamente) é mais
+   * confiável do que reimplementar a leitura por conta própria.
+   */
+  imshow(canvas: HTMLCanvasElement, mat: CvMat): void;
   onRuntimeInitialized?: () => void;
 };
 

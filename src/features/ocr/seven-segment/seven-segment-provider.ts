@@ -2,6 +2,7 @@ import { loadImageDataFromUrl, imageDataToBlob } from "@/features/ocr/canvas-uti
 import { preprocessForThreshold, THRESHOLD_LEVELS } from "@/features/ocr/preprocess";
 import { HIGH_CONFIDENCE } from "@/features/ocr/run-ocr-pipeline";
 import type { OcrProgress } from "@/features/ocr/tesseract-provider";
+import type { PSM } from "tesseract.js";
 import type { OcrProvider, OcrResult } from "@/features/ocr/types";
 import { correctPerspective } from "@/features/ocr/seven-segment/correct-perspective";
 import { decodeDigit, readSegmentStates } from "@/features/ocr/seven-segment/decode-seven-segment";
@@ -60,7 +61,7 @@ export class SevenSegmentOcrProvider implements OcrProvider {
     try {
       const imageData = await loadImageDataFromUrl(url);
       let mat: CvMat = cv.matFromImageData(imageData);
-      emitDebugStage(this.options.debug, "original", mat);
+      emitDebugStage(cv, this.options.debug, "original", mat);
 
       try {
         const quad = detectDisplayQuad(cv, mat);
@@ -71,7 +72,7 @@ export class SevenSegmentOcrProvider implements OcrProvider {
             mat = corrected;
           }
         }
-        emitDebugStage(this.options.debug, "display_detectado", mat);
+        emitDebugStage(cv, this.options.debug, "display_detectado", mat);
 
         const cluster = findMainReadingCluster(cv, mat);
         if (!cluster) {
@@ -80,11 +81,11 @@ export class SevenSegmentOcrProvider implements OcrProvider {
           // além do número principal) — `SPARSE_TEXT` deixa o Tesseract
           // segmentar essas várias regiões de texto em vez de tentar
           // (e falhar) ler tudo como uma única linha.
-          return await this.recognizeWithFallback(mat, "sparse");
+          return await this.recognizeWithFallback(cv, mat, "sparse");
         }
 
         const roiMat = cropMatToBBox(mat, cluster.bbox);
-        emitDebugStage(this.options.debug, "roi_numero", roiMat);
+        emitDebugStage(cv, this.options.debug, "roi_numero", roiMat);
 
         try {
           // A decodificação por segmentos usa Mats/operações nativas do
@@ -107,7 +108,7 @@ export class SevenSegmentOcrProvider implements OcrProvider {
               engineVersion: ENGINE_VERSION,
             };
           }
-          return await this.recognizeWithFallback(roiMat, "single-line");
+          return await this.recognizeWithFallback(cv, roiMat, "single-line");
         } finally {
           roiMat.delete();
         }
@@ -124,10 +125,10 @@ export class SevenSegmentOcrProvider implements OcrProvider {
     let best: { value: number | null; confidence: number } = { value: null, confidence: 0 };
 
     for (const level of THRESHOLD_LEVELS) {
-      const buffer = matToPixelBuffer(roiMat);
+      const buffer = matToPixelBuffer(cv, roiMat);
       const processedBuffer = preprocessForThreshold(buffer, level);
       const processedMat = pixelBufferToMat(cv, processedBuffer);
-      emitDebugStage(this.options.debug, "threshold", processedMat);
+      emitDebugStage(cv, this.options.debug, "threshold", processedMat);
 
       try {
         const digitCells = segmentDigitCells(cv, processedMat);
@@ -136,7 +137,7 @@ export class SevenSegmentOcrProvider implements OcrProvider {
           return decodeDigit(segments, cellBBox, confidence);
         });
 
-        emitDebugStage(this.options.debug, "digitos_detectados", processedMat);
+        emitDebugStage(cv, this.options.debug, "digitos_detectados", processedMat);
 
         const result = validateDecodedNumber(digits);
         if (result.value !== null && result.confidence > best.confidence) {
@@ -152,13 +153,16 @@ export class SevenSegmentOcrProvider implements OcrProvider {
   }
 
   /** Fallback: OCR genérico (Tesseract) sobre o mat recebido (ROI isolada, ou o recorte inteiro quando não há cluster). */
-  private async recognizeWithFallback(roiMat: CvMat, mode: "single-line" | "sparse"): Promise<OcrResult> {
-    const buffer = matToPixelBuffer(roiMat);
+  private async recognizeWithFallback(
+    cv: CvNamespace,
+    roiMat: CvMat,
+    mode: "single-line" | "sparse",
+  ): Promise<OcrResult> {
+    const buffer = matToPixelBuffer(cv, roiMat);
     const roiBlob = await imageDataToBlob(buffer);
     const { PSM } = await import("tesseract.js");
     const psm: PSM = mode === "sparse" ? PSM.SPARSE_TEXT : PSM.SINGLE_LINE;
     const result = await this.fallback.recognize(roiBlob, psm);
-    console.warn("[ocr-debug] fallback result", mode, JSON.stringify(result));
     return { ...result, engineVersion: ENGINE_VERSION_WITH_FALLBACK };
   }
 

@@ -1,4 +1,9 @@
-import type { CvMat, SevenSegmentDebugHooks, SevenSegmentDebugStage } from "@/features/ocr/seven-segment/types";
+import type {
+  CvMat,
+  CvNamespace,
+  SevenSegmentDebugHooks,
+  SevenSegmentDebugStage,
+} from "@/features/ocr/seven-segment/types";
 import { matToPixelBuffer } from "@/features/ocr/seven-segment/preprocess-display";
 
 /**
@@ -12,6 +17,7 @@ import { matToPixelBuffer } from "@/features/ocr/seven-segment/preprocess-displa
  * renderiza como imagem inspecionável.
  */
 export function emitDebugStage(
+  cv: CvNamespace,
   hooks: SevenSegmentDebugHooks | undefined,
   stage: SevenSegmentDebugStage,
   mat: CvMat,
@@ -19,7 +25,7 @@ export function emitDebugStage(
   if (process.env.NODE_ENV !== "development") return;
   if (!hooks) return;
 
-  const buffer = matToPixelBuffer(mat);
+  const buffer = matToPixelBuffer(cv, mat);
   const canvas = document.createElement("canvas");
   canvas.width = buffer.width;
   canvas.height = buffer.height;

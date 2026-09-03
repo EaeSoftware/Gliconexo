@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Build UMD de terceiros copiado por scripts/copy-opencv-asset.mjs
+    // (predev/prebuild) — não é código-fonte do projeto.
+    "public/vendor/**",
   ]),
 ]);
 
