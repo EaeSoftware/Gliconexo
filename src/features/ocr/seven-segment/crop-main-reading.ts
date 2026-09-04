@@ -1,4 +1,5 @@
 import type { CvNamespace } from "@/features/ocr/seven-segment/opencv-loader";
+import { splitIntoDigitCells } from "@/features/ocr/seven-segment/detect-digits";
 import type { BBox, CvMat, DigitCluster } from "@/features/ocr/seven-segment/types";
 
 /** Menor ímpar >= `value`, com piso em `min` (exigido por `cv.adaptiveThreshold`). */
@@ -49,6 +50,39 @@ function unionBBox(boxes: BBox[]): BBox {
   const maxX = Math.max(...boxes.map((b) => b.x + b.width));
   const maxY = Math.max(...boxes.map((b) => b.y + b.height));
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** Fração da área do menor retângulo que a interseção entre `a` e `b` ocupa. */
+function overlapRatio(a: BBox, b: BBox): number {
+  const overlapX = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+  const overlapY = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+  const minArea = Math.min(bboxArea(a), bboxArea(b));
+  return minArea > 0 ? (overlapX * overlapY) / minArea : 0;
+}
+
+/** Sobreposição mínima (fração da área do menor retângulo) para dois contornos serem tratados como o mesmo glifo. */
+export const DUPLICATE_CONTOUR_OVERLAP_RATIO = 0.3;
+
+/**
+ * Funde retângulos que se sobrepõem significativamente num só (a
+ * união). Necessário porque `findMainReadingCluster` extrai contornos
+ * usando mais de um tamanho de vizinhança para o limiar adaptativo (ver
+ * comentário lá) — o mesmo glifo real então aparece como dois
+ * retângulos quase idênticos, um por tentativa. Sem esta fusão, um
+ * cluster de 3 dígitos vira 6 caixas e ultrapassa `MAX_READING_DIGITS`,
+ * fazendo `pickBestCluster` descartá-lo por inteiro.
+ */
+export function mergeOverlappingBoxes(boxes: BBox[]): BBox[] {
+  const merged: BBox[] = [];
+  for (const box of boxes) {
+    const index = merged.findIndex((existing) => overlapRatio(existing, box) >= DUPLICATE_CONTOUR_OVERLAP_RATIO);
+    if (index === -1) {
+      merged.push(box);
+    } else {
+      merged[index] = unionBBox([merged[index], box]);
+    }
+  }
+  return merged;
 }
 
 /**
@@ -134,6 +168,55 @@ export function pickBestCluster(clusters: DigitCluster[], containerBBox: BBox): 
   return best !== null && bestScore >= CLUSTER_SCORE_FLOOR ? best : null;
 }
 
+/** Diferença de altura relativa (0-1) acima da qual dois clusters são considerados fontes de tamanhos diferentes (ex.: leitura principal vs. horário/contador pequenos). */
+export const ROW_MERGE_HEIGHT_TOLERANCE = 0.3;
+
+/** Tolerância de centro vertical para fundir clusters vizinhos, um pouco mais generosa que `ROW_Y_TOLERANCE_RATIO` (agrupamento por contorno individual, mais sensível a ruído entre dígitos). */
+export const ROW_MERGE_Y_TOLERANCE_RATIO = 0.75;
+
+function averageHeight(boxes: BBox[]): number {
+  return boxes.reduce((sum, box) => sum + box.height, 0) / boxes.length;
+}
+
+/**
+ * Funde `best` com outros clusters da mesma "linha" que o agrupamento
+ * por contorno individual (`clusterContoursByRow`) pode ter separado
+ * indevidamente — por exemplo, um dígito do meio ligeiramente mais
+ * baixo/alto numa foto com perspectiva imperfeita, ou um contorno de
+ * ruído entre dois dígitos que quebra a cadeia de agrupamento. Sem
+ * isso, `pickBestCluster` pode escolher um cluster de um único dígito
+ * (o de maior pontuação) e descartar os demais dígitos da mesma
+ * leitura, mesmo que estivessem visualmente na mesma linha.
+ *
+ * Só funde clusters com altura de dígito semelhante (evita juntar a
+ * leitura principal com números pequenos do visor, como horário ou
+ * contador de memória) e mantém o limite de `MAX_READING_DIGITS` — se
+ * a fusão ultrapassar isso, mantém apenas `best` (comportamento
+ * anterior), preferindo não adivinhar a arriscar juntar leituras
+ * diferentes.
+ */
+export function mergeSameRowClusters(best: DigitCluster, clusters: DigitCluster[]): DigitCluster {
+  const bestAvgHeight = averageHeight(best.digitBoxes);
+  const bestYCenter = bboxCenter(best.bbox).y;
+
+  const sameRow = clusters.filter((cluster) => {
+    if (cluster === best) return true;
+    const avgHeight = averageHeight(cluster.digitBoxes);
+    const heightRatio = Math.min(avgHeight, bestAvgHeight) / Math.max(avgHeight, bestAvgHeight);
+    if (heightRatio < 1 - ROW_MERGE_HEIGHT_TOLERANCE) return false;
+
+    const yCenter = bboxCenter(cluster.bbox).y;
+    return Math.abs(yCenter - bestYCenter) < ROW_MERGE_Y_TOLERANCE_RATIO * bestAvgHeight;
+  });
+
+  if (sameRow.length <= 1) return best;
+
+  const mergedDigitBoxes = sameRow.flatMap((cluster) => cluster.digitBoxes).sort((a, b) => a.x - b.x);
+  if (mergedDigitBoxes.length > MAX_READING_DIGITS) return best;
+
+  return { bbox: unionBBox(sameRow.map((cluster) => cluster.bbox)), digitBoxes: mergedDigitBoxes };
+}
+
 /** Margem adicionada ao redor do cluster escolhido ao recortar, para não cortar bordas de segmentos. */
 export const CLUSTER_CROP_PADDING_RATIO = 0.08;
 
@@ -189,18 +272,16 @@ export function findMainReadingCluster(cv: CvNamespace, mat: CvMat): DigitCluste
     // teria um ponto de corte ideal diferente. Um limiar recalculado
     // por vizinhança captura o contraste local (dígito vs. LCD) onde
     // quer que ele esteja no recorte.
-    const blockSize = oddAtLeast(Math.round(Math.min(mat.cols, mat.rows) / 4), 21);
-    cv.adaptiveThreshold(blurred, thresholded, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, blockSize, 10);
-    cv.findContours(thresholded, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
-
-    // Contornos que tocam a borda do recorte são a moldura/fundo do
-    // aparelho (ou o próprio contorno externo da imagem), nunca um
-    // dígito: a instrução da tela de recorte pede para o usuário
-    // cobrir só o visor, então um glifo real sempre fica com alguma
-    // margem interna. Esse filtro importa sobretudo quando
-    // `detectDisplayQuad` não isola o LCD (OTSU global então mistura o
-    // contraste do visor com o da moldura escura ao redor, produzindo
-    // um único contorno gigante em vez de dígitos separados).
+    //
+    // Um único block size não é suficiente sob iluminação desigual
+    // (reflexo/gradiente de luz atravessando o LCD numa foto real): um
+    // vizinhança grande suaviza a variação de contraste e pode apagar
+    // metade de um dígito (a metade mais clara/com reflexo), gerando
+    // contornos "cortados" — só a metade inferior de "1 0 3", por
+    // exemplo. Por isso tenta dois tamanhos de vizinhança (grande e
+    // pequeno) e junta os contornos encontrados em cada um: a
+    // vizinhança pequena captura contraste local mesmo dentro de uma
+    // região com gradiente de luz, preenchendo o que a grande perdeu.
     const borderMargin = Math.max(2, Math.round(Math.min(mat.cols, mat.rows) * 0.01));
     const touchesBorder = (box: BBox) =>
       box.x <= borderMargin ||
@@ -209,20 +290,47 @@ export function findMainReadingCluster(cv: CvNamespace, mat: CvMat): DigitCluste
       box.y + box.height >= mat.rows - borderMargin;
 
     const boxes: BBox[] = [];
-    for (let i = 0; i < contours.size(); i += 1) {
-      const contour = contours.get(i);
-      try {
-        const rect = cv.boundingRect(contour);
-        const box: BBox = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-        if (!touchesBorder(box)) boxes.push(box);
-      } finally {
-        contour.delete();
+    const blockSizes = [
+      oddAtLeast(Math.round(Math.min(mat.cols, mat.rows) / 4), 21),
+      oddAtLeast(Math.round(Math.min(mat.cols, mat.rows) / 10), 11),
+    ];
+    for (const blockSize of blockSizes) {
+      cv.adaptiveThreshold(blurred, thresholded, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, blockSize, 10);
+      cv.findContours(thresholded, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+
+      // Contornos que tocam a borda do recorte são a moldura/fundo do
+      // aparelho (ou o próprio contorno externo da imagem), nunca um
+      // dígito: a instrução da tela de recorte pede para o usuário
+      // cobrir só o visor, então um glifo real sempre fica com alguma
+      // margem interna. Esse filtro importa sobretudo quando
+      // `detectDisplayQuad` não isola o LCD (OTSU global então mistura o
+      // contraste do visor com o da moldura escura ao redor, produzindo
+      // um único contorno gigante em vez de dígitos separados).
+      for (let i = 0; i < contours.size(); i += 1) {
+        const contour = contours.get(i);
+        try {
+          const rect = cv.boundingRect(contour);
+          const box: BBox = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+          if (!touchesBorder(box)) boxes.push(box);
+        } finally {
+          contour.delete();
+        }
       }
     }
 
-    const clusters = clusterContoursByRow(boxes, mat.rows);
+    // Um glifo pode gerar mais de um contorno desconectado (ex.: o "1"
+    // desta fonte tem uma "bandeira" diagonal separada da haste
+    // vertical) — sem fundir esses fragmentos antes de agrupar por
+    // linha, um número de 3 dígitos vira 4+ caixas e ultrapassa
+    // `MAX_READING_DIGITS`, fazendo `pickBestCluster` descartar o
+    // cluster certo inteiro. Reaproveita a mesma heurística de fusão
+    // por proximidade horizontal/sobreposição vertical já usada (e
+    // testada) em `detect-digits.ts` para a etapa final de segmentação.
+    const dedupedBoxes = splitIntoDigitCells(mergeOverlappingBoxes(boxes));
+    const clusters = clusterContoursByRow(dedupedBoxes, mat.rows);
     const containerBBox: BBox = { x: 0, y: 0, width: mat.cols, height: mat.rows };
-    return pickBestCluster(clusters, containerBBox);
+    const best = pickBestCluster(clusters, containerBBox);
+    return best ? mergeSameRowClusters(best, clusters) : null;
   } finally {
     gray.delete();
     blurred.delete();

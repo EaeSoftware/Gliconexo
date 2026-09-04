@@ -18,6 +18,7 @@ import { classifyValue } from "@/features/measurements/classify";
 import { ClassificationBadge } from "@/features/measurements/components/classification-badge";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
+import { X } from "lucide-react";
 
 function nowForDateTimeLocal() {
   const now = new Date();
@@ -42,6 +43,14 @@ type ManualEntryFormProps = {
   /** Nível de confiança do OCR (0–1), registrado junto da medição. */
   ocrConfidence?: number;
   ocrEngineVersion?: string;
+  /**
+   * Chamado quando o usuário remove a foto anexada (botão "×" sobre a
+   * pré-visualização) — o chamador deve revogar a `object URL` da foto
+   * temporária. O valor já reconhecido/digitado permanece no campo; a
+   * medição passa a ser salva como origem "manual", já que não há mais
+   * foto que a sustente.
+   */
+  onRemoveImage?: () => void;
   /** Mostra um botão "Tentar novamente" (voltar à captura), além de "Confirmar e salvar". */
   onRetry?: () => void;
   /**
@@ -57,7 +66,7 @@ type ManualEntryFormProps = {
 
 export function ManualEntryForm(props: ManualEntryFormProps) {
   const {
-    origin = "manual",
+    origin: originProp = "manual",
     defaultValue,
     onSaved,
     previewImageUrl,
@@ -65,11 +74,22 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
     ocrEngineVersion,
     onRetry,
     onRegisterAnother,
+    onRemoveImage,
   } = props;
   const isEdit = props.mode === "edit";
 
   const [saved, setSaved] = useState<GlucoseMeasurement | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
+  // Sem a foto, não há mais base para classificar a medição como "ocr" —
+  // volta a ser uma entrada manual (o valor já reconhecido/editado continua no campo).
+  const origin = imageRemoved ? "manual" : originProp;
+  const showPreview = Boolean(previewImageUrl) && !imageRemoved;
+
+  function handleRemoveImage() {
+    setImageRemoved(true);
+    onRemoveImage?.();
+  }
   const preferences = useLiveQuery(() => getDb().preferences.get("local"), []);
   const {
     register,
@@ -146,13 +166,24 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-      {previewImageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- URL de blob local temporária
-        <img
-          src={previewImageUrl}
-          alt="Foto recortada do visor do glicosímetro, para conferência"
-          className="max-h-48 w-full rounded-xl border border-border object-contain"
-        />
+      {showPreview ? (
+        <div className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element -- URL de blob local temporária */}
+          <img
+            src={previewImageUrl}
+            alt="Foto recortada do visor do glicosímetro, para conferência"
+            className="max-h-48 w-full rounded-xl border border-border object-contain"
+          />
+          <button
+            type="button"
+            onClick={handleRemoveImage}
+            aria-label="Remover imagem"
+            title="Remover imagem"
+            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+          >
+            <X size={18} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
       ) : null}
 
       <TextField
@@ -221,11 +252,12 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
             <p className="text-xs text-foreground/60">
               {ocrConfidence >= 0.7
                 ? "Confiança do reconhecimento: alta."
-                : "Confiança do reconhecimento: baixa — revise o valor com atenção."}
+                : "Confiança do reconhecimento: baixa — revise o valor com atenção. Se preferir, tire outra foto com mais luz, sem reflexo no visor e enquadrando só a tela do glicosímetro."}
             </p>
           ) : (
             <p className="text-xs text-foreground/60">
-              Nenhum valor foi reconhecido automaticamente. Digite o valor mostrado no visor.
+              Não foi possível identificar um número com segurança nesta foto. Tente novamente com
+              mais luz, sem reflexo no visor e mais perto do visor, ou digite o valor manualmente.
             </p>
           )}
         </div>

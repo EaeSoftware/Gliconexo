@@ -1,5 +1,5 @@
 import { loadImageDataFromUrl, imageDataToBlob } from "@/features/ocr/canvas-utils";
-import { preprocessForThreshold, THRESHOLD_LEVELS } from "@/features/ocr/preprocess";
+import { preprocessForThreshold, THRESHOLD_LEVELS, type PixelBuffer } from "@/features/ocr/preprocess";
 import { HIGH_CONFIDENCE } from "@/features/ocr/run-ocr-pipeline";
 import type { OcrProgress } from "@/features/ocr/tesseract-provider";
 import type { PSM } from "tesseract.js";
@@ -20,6 +20,43 @@ const ENGINE_VERSION = "seven-segment@1";
 const ENGINE_VERSION_WITH_FALLBACK = "seven-segment@1+tesseract-fallback";
 
 const EMPTY_RESULT: OcrResult = { value: null, confidence: 0, candidates: [], engineVersion: ENGINE_VERSION };
+
+type DecodeAttempt = {
+  buffer: PixelBuffer;
+};
+
+function oddAtLeast(value: number, min: number): number {
+  const rounded = Math.max(min, Math.round(value));
+  return rounded % 2 === 1 ? rounded : rounded + 1;
+}
+
+function adaptiveThresholdAttempt(cv: CvNamespace, roiMat: CvMat, blockSize: number): DecodeAttempt {
+  const gray = new cv.Mat();
+  const blurred = new cv.Mat();
+  const thresholded = new cv.Mat();
+
+  try {
+    cv.cvtColor(roiMat, gray, cv.COLOR_RGBA2GRAY);
+    cv.GaussianBlur(gray, blurred, new cv.Size(3, 3), 0);
+    cv.adaptiveThreshold(
+      blurred,
+      thresholded,
+      255,
+      cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+      cv.THRESH_BINARY,
+      blockSize,
+      10,
+    );
+
+    return {
+      buffer: matToPixelBuffer(cv, thresholded),
+    };
+  } finally {
+    thresholded.delete();
+    blurred.delete();
+    gray.delete();
+  }
+}
 
 export type SevenSegmentProviderOptions = {
   onProgress?: (progress: OpenCvProgress | OcrProgress) => void;
@@ -120,20 +157,17 @@ export class SevenSegmentOcrProvider implements OcrProvider {
     }
   }
 
-  /** Testa cada nível de limiar (mesmos usados hoje pelo pipeline genérico) até achar uma leitura válida de alta confiança. */
+  /** Testa limiares globais primeiro e, se necessario, tentativas adaptativas locais. */
   private decodeAcrossThresholds(cv: CvNamespace, roiMat: CvMat): { value: number | null; confidence: number } {
     let best: { value: number | null; confidence: number } = { value: null, confidence: 0 };
-
-    for (const level of THRESHOLD_LEVELS) {
-      const buffer = matToPixelBuffer(cv, roiMat);
-      const processedBuffer = preprocessForThreshold(buffer, level);
-      const processedMat = pixelBufferToMat(cv, processedBuffer);
+    const processAttempt = (attempt: DecodeAttempt): void => {
+      const processedMat = pixelBufferToMat(cv, attempt.buffer);
       emitDebugStage(cv, this.options.debug, "threshold", processedMat);
 
       try {
         const digitCells = segmentDigitCells(cv, processedMat);
         const digits: DecodedDigit[] = digitCells.map((cellBBox) => {
-          const { segments, confidence } = readSegmentStates(processedBuffer, cellBBox);
+          const { segments, confidence } = readSegmentStates(attempt.buffer, cellBBox);
           return decodeDigit(segments, cellBBox, confidence);
         });
 
@@ -143,9 +177,29 @@ export class SevenSegmentOcrProvider implements OcrProvider {
         if (result.value !== null && result.confidence > best.confidence) {
           best = result;
         }
-        if (best.value !== null && best.confidence >= HIGH_CONFIDENCE) break;
+      } catch {
+        // Segue para o próximo nível de limiar.
       } finally {
         processedMat.delete();
+      }
+    };
+
+    const buffer = matToPixelBuffer(cv, roiMat);
+    for (const level of THRESHOLD_LEVELS) {
+      processAttempt({ buffer: preprocessForThreshold(buffer, level) });
+      if (best.value !== null && best.confidence >= HIGH_CONFIDENCE) break;
+    }
+
+    if (best.value === null || best.confidence < HIGH_CONFIDENCE) {
+      const minDimension = Math.min(roiMat.cols, roiMat.rows);
+      const blockSizes = [
+        oddAtLeast(Math.round(minDimension / 4), 21),
+        oddAtLeast(Math.round(minDimension / 10), 11),
+      ];
+
+      for (const blockSize of blockSizes) {
+        processAttempt(adaptiveThresholdAttempt(cv, roiMat, blockSize));
+        if (best.value !== null && best.confidence >= HIGH_CONFIDENCE) break;
       }
     }
 

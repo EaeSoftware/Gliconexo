@@ -4,6 +4,9 @@ import type { BBox, CvMat } from "@/features/ocr/seven-segment/types";
 /** Fragmentos com gap horizontal menor que isto (relativo à altura média) são fundidos numa única célula de dígito. */
 export const FRAGMENT_MERGE_GAP_RATIO = 0.35;
 
+/** A fusao de fragmentos nao pode produzir uma caixa larga demais para ser um unico digito. */
+export const FRAGMENT_MERGE_MAX_UNION_ASPECT_RATIO = 0.95;
+
 function overlapsVertically(a: BBox, b: BBox): boolean {
   const aTop = a.y;
   const aBottom = a.y + a.height;
@@ -18,6 +21,10 @@ function unionBBox(a: BBox, b: BBox): BBox {
   const maxX = Math.max(a.x + a.width, b.x + b.width);
   const maxY = Math.max(a.y + a.height, b.y + b.height);
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+function aspectRatio(box: BBox): number {
+  return box.height > 0 ? box.width / box.height : Number.POSITIVE_INFINITY;
 }
 
 /**
@@ -38,8 +45,13 @@ export function splitIntoDigitCells(boxes: BBox[]): BBox[] {
     const gap = box.x - (last.x + last.width);
     const avgHeight = (last.height + box.height) / 2;
 
-    if (gap < FRAGMENT_MERGE_GAP_RATIO * avgHeight && overlapsVertically(last, box)) {
-      cells[cells.length - 1] = unionBBox(last, box);
+    const merged = unionBBox(last, box);
+    if (
+      gap < FRAGMENT_MERGE_GAP_RATIO * avgHeight &&
+      overlapsVertically(last, box) &&
+      aspectRatio(merged) <= FRAGMENT_MERGE_MAX_UNION_ASPECT_RATIO
+    ) {
+      cells[cells.length - 1] = merged;
     } else {
       cells.push(box);
     }
@@ -55,12 +67,22 @@ export function splitIntoDigitCells(boxes: BBox[]): BBox[] {
 export function segmentDigitCells(cv: CvNamespace, thresholdedMat: CvMat): BBox[] {
   const contours = new cv.MatVector();
   const hierarchy = new cv.Mat();
+  const gray = new cv.Mat();
+  const contourSource = new cv.Mat();
 
   try {
-    cv.findContours(thresholdedMat, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    cv.cvtColor(thresholdedMat, gray, cv.COLOR_RGBA2GRAY);
+    // `preprocessForThreshold` deixa o fundo claro do LCD como 255 e os
+    // digitos escuros como 0. `findContours` procura blobs brancos,
+    // entao inverte apenas a fonte dos contornos; o buffer original
+    // continua sendo usado por `readSegmentStates`, que ja detecta a
+    // polaridade da celula.
+    cv.threshold(gray, contourSource, 127, 255, cv.THRESH_BINARY_INV);
+    cv.findContours(contourSource, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
     const boxes: BBox[] = [];
-    for (let i = 0; i < contours.size(); i += 1) {
+    const contourCount = contours.size();
+    for (let i = 0; i < contourCount; i += 1) {
       const contour = contours.get(i);
       try {
         const rect = cv.boundingRect(contour);
@@ -72,6 +94,8 @@ export function segmentDigitCells(cv: CvNamespace, thresholdedMat: CvMat): BBox[
 
     return splitIntoDigitCells(boxes);
   } finally {
+    contourSource.delete();
+    gray.delete();
     contours.delete();
     hierarchy.delete();
   }

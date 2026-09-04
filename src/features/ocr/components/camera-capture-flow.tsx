@@ -119,6 +119,14 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
     setStep("idle");
   }
 
+  function handleRemoveImage() {
+    // A pré-visualização já some no próprio formulário (estado local
+    // `imageRemoved`); aqui só libera a URL de blob temporária — a
+    // imagem nunca é persistida, então não há mais nada para limpar.
+    if (croppedImageUrl) URL.revokeObjectURL(croppedImageUrl);
+    setCroppedImageUrl(null);
+  }
+
   function handleSaved(measurement: GlucoseMeasurement) {
     onSaved?.(measurement);
     // Descarta a foto temporária imediatamente após salvar — nunca é
@@ -227,6 +235,7 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
         ocrConfidence={ocrResult?.confidence}
         ocrEngineVersion={ocrResult?.engineVersion}
         onRetry={handleRetry}
+        onRemoveImage={handleRemoveImage}
         onSaved={handleSaved}
         onRegisterAnother={resetToIdle}
       />
