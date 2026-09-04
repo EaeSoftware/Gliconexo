@@ -4,9 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CameraPreview } from "@/features/ocr/components/camera-preview";
 import { FilePickerButton } from "@/features/ocr/components/file-picker-button";
 import { ImageEditor } from "@/features/ocr/components/image-editor";
-import type { OcrProgress } from "@/features/ocr/tesseract-provider";
-import { SevenSegmentOcrProvider } from "@/features/ocr/seven-segment/seven-segment-provider";
-import type { OpenCvProgress } from "@/features/ocr/seven-segment/opencv-loader";
+import { PaddleOcrProvider, type PaddleOcrProgress } from "@/features/ocr/paddle-ocr-provider";
 import type { OcrResult } from "@/features/ocr/types";
 import { ManualEntryForm } from "@/features/measurements/components/manual-entry-form";
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
@@ -30,22 +28,12 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
   const [ocrProgressText, setOcrProgressText] = useState<string>("Preparando...");
 
-  const providerRef = useRef<SevenSegmentOcrProvider | null>(null);
+  const providerRef = useRef<PaddleOcrProvider | null>(null);
 
   function getProvider() {
     if (!providerRef.current) {
-      providerRef.current = new SevenSegmentOcrProvider({
-        onProgress: (progress: OpenCvProgress | OcrProgress) => {
-          setOcrProgressText(describeProgress(progress));
-        },
-        debug: {
-          onStage: (stage, dataUrl) => {
-            (window as unknown as { __ocrDebug?: Record<string, string[]> }).__ocrDebug ??= {};
-            const store = (window as unknown as { __ocrDebug: Record<string, string[]> }).__ocrDebug;
-            store[stage] = store[stage] ?? [];
-            store[stage].push(dataUrl);
-          },
-        },
+      providerRef.current = new PaddleOcrProvider((progress) => {
+        setOcrProgressText(describeProgress(progress));
       });
     }
     return providerRef.current;
@@ -94,11 +82,6 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
     setOcrProgressText("Preparando reconhecimento...");
 
     try {
-      // Chama o provider diretamente: SevenSegmentOcrProvider já faz seu
-      // próprio loop de níveis de limiar internamente, depois de detectar
-      // e recortar o visor — não precisa do loop genérico de
-      // `runOcrPipeline` (que continua existindo, usado pelo
-      // TesseractOcrProvider legado e por seus próprios testes).
       const result = await getProvider().recognize(croppedBlob);
       setOcrResult(result);
     } catch {
@@ -245,24 +228,6 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   return null;
 }
 
-function describeProgress(progress: OpenCvProgress | OcrProgress): string {
-  if (!("progress" in progress)) {
-    return progress.status === "loading" ? "Carregando mecanismo de leitura..." : "Preparando reconhecimento...";
-  }
-
-  const percent = Math.round(progress.progress * 100);
-  switch (progress.status) {
-    case "loading tesseract core":
-      return `Carregando mecanismo de OCR alternativo... ${percent}%`;
-    case "initializing tesseract":
-      return "Inicializando OCR alternativo...";
-    case "loading language traineddata":
-      return `Baixando modelo de reconhecimento alternativo... ${percent}%`;
-    case "initializing api":
-      return "Preparando reconhecimento...";
-    case "recognizing text":
-      return `Reconhecendo o valor... ${percent}%`;
-    default:
-      return "Processando...";
-  }
+function describeProgress(progress: PaddleOcrProgress): string {
+  return progress.status === "loading model" ? "Carregando mecanismo de leitura..." : "Reconhecendo o valor...";
 }
