@@ -44,3 +44,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# vídeo de marketing (ver marketing/video/README.md)
+/marketing/video/node_modules/
+/marketing/video/out/*
+!/marketing/video/out/gliconexo-motion.mp4

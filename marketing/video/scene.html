@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>GlicoNexo Motion</title>
+<style>
+@font-face { font-family: "Lexend"; font-weight: 400; src: url("node_modules/@fontsource/lexend/files/lexend-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Lexend"; font-weight: 600; src: url("node_modules/@fontsource/lexend/files/lexend-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Lexend"; font-weight: 700; src: url("node_modules/@fontsource/lexend/files/lexend-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Lexend"; font-weight: 800; src: url("node_modules/@fontsource/lexend/files/lexend-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Geist"; font-weight: 400; src: url("node_modules/@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Geist"; font-weight: 500; src: url("node_modules/@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Geist"; font-weight: 600; src: url("node_modules/@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Geist"; font-weight: 700; src: url("node_modules/@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Geist Mono"; font-weight: 500; src: url("node_modules/@fontsource/geist-mono/files/geist-mono-latin-500-normal.woff2") format("woff2"); }
+
+:root {
+  --teal: #22c9a0;
+  --blue: #1e9af3;
+  --navy: #14294b;
+  --bg0: #050b16;
+  --bg1: #0b1526;
+  --surface: #101d34;
+  --grey: #b3b3b3;
+  --grey2: #7a8699;
+  --within: #4ade80;
+}
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg0); }
+#stage {
+  position: relative; width: 1920px; height: 1080px; overflow: hidden;
+  perspective: 1800px; perspective-origin: 50% 50%;
+  font-family: "Geist", sans-serif; color: #fff;
+  background: radial-gradient(120% 95% at 50% 45%, var(--bg1) 0%, var(--bg0) 72%);
+}
+.abs { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; }
+.lex { font-family: "Lexend", sans-serif; }
+.mono { font-family: "Geist Mono", monospace; }
+.glass {
+  background: linear-gradient(160deg, rgba(38, 62, 104, 0.62) 0%, rgba(16, 29, 52, 0.66) 55%, rgba(10, 20, 38, 0.7) 100%);
+  border: 1.5px solid rgba(34, 201, 160, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 34px 70px -24px rgba(0, 0, 0, 0.8),
+    0 0 46px rgba(34, 201, 160, 0.16);
+  backdrop-filter: blur(18px);
+  box-sizing: border-box;
+}
+.layer { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
+.glow-blob { width: 1500px; height: 1500px; border-radius: 50%; }
+svg { overflow: visible; }
+
+/* status card (cena 2) */
+#cardContent { display: flex; align-items: center; padding: 0 34px; gap: 22px; }
+#cardContent .txt { flex: 1; }
+#cardContent .h { font-family: "Lexend"; font-weight: 700; font-size: 38px; letter-spacing: -0.5px; line-height: 1.1; }
+#cardContent .s { font-size: 24px; color: #c3cbd8; margin-top: 6px; font-weight: 500; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  border-radius: 999px; padding: 9px 16px; font-weight: 600;
+}
+.chip-teal { background: rgba(34, 201, 160, 0.14); color: #5eead4; border: 1px solid rgba(34, 201, 160, 0.4); font-size: 19px; }
+
+/* gloss tumble layer */
+#gloss { background: linear-gradient(135deg, #2fe0b3 0%, #22c9a0 35%, #1e9af3 100%); }
+#gloss::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,0.12) 100%);
+}
+#spec {
+  position: absolute; top: -40%; height: 180%; width: 120px; left: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 50%, rgba(255,255,255,0) 100%);
+  filter: blur(6px); transform-origin: 50% 50%;
+}
+#ghost {
+  position: absolute; top: 50%; left: 0; white-space: nowrap;
+  font-family: "Lexend"; font-weight: 800; font-size: 120px; letter-spacing: -2px;
+  color: rgba(255, 255, 255, 0.22);
+}
+
+/* capsule */
+#capsule { background: #22c9a0; }
+#capFill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, #e9fbf5 0%, #ffffff 100%); }
+#capShine { position: absolute; left: 18%; top: 8%; width: 16%; height: 70%; border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); }
+
+/* button */
+#button { background: linear-gradient(180deg, #3ee0b8 0%, #22c9a0 55%, #1cb892 100%); display: flex; align-items: center; justify-content: center; gap: 18px; }
+#button::before { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -3px 0 rgba(0,0,0,0.08); }
+.btn-label { font-family: "Lexend"; font-weight: 700; color: var(--navy); white-space: nowrap; }
+
+/* badge */
+#badge { background: #22c9a0; display: flex; align-items: center; justify-content: center; gap: 12px; }
+
+/* scanner */
+.corner { stroke: #22c9a0; stroke-width: 7; stroke-linecap: round; fill: none; }
+#scanline { height: 4px; border-radius: 4px; background: linear-gradient(90deg, rgba(34,201,160,0) 0%, #7ff5d6 50%, rgba(34,201,160,0) 100%); box-shadow: 0 0 24px 6px rgba(34,201,160,0.55); }
+.seg { transition: none; }
+#unit { font-family: "Geist"; font-weight: 600; font-size: 40px; color: #b8f3e2; }
+
+/* confirm */
+#confirmHint { display: flex; align-items: center; gap: 12px; font-size: 24px; color: #c3cbd8; font-weight: 500; white-space: nowrap; }
+#confirmLabel { font-size: 20px; color: #8fa0b8; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+
+/* fan cards */
+.mcard { width: 196px; height: 236px; border-radius: 30px; padding: 20px; }
+.mcard .icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+.mcard .val { font-family: "Lexend"; font-weight: 700; font-size: 50px; line-height: 1; margin-top: 18px; letter-spacing: -1px; }
+.mcard .val small { font-family: "Geist"; font-size: 16px; font-weight: 600; color: #9fb0c6; letter-spacing: 0; margin-left: 4px; }
+.mcard .ctx { font-size: 19px; font-weight: 600; color: #e6ecf5; margin-top: 10px; white-space: nowrap; }
+.status {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+  font-size: 14.5px; font-weight: 600; color: #6ee79a;
+  background: rgba(34, 197, 94, 0.14); border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 999px; padding: 5px 10px; white-space: nowrap;
+}
+
+.title { font-family: "Lexend"; font-weight: 700; letter-spacing: -1.5px; white-space: nowrap; display: flex; gap: 0.28em; }
+.title span { display: inline-block; }
+.teal { color: var(--teal); }
+
+#sub8 { font-size: 32px; font-weight: 500; color: #c9d1dc; white-space: nowrap; }
+#caret { display: inline-block; width: 3px; height: 34px; background: var(--teal); margin-left: 4px; vertical-align: -5px; }
+#chip8 { font-size: 23px; color: #d7e0ec; background: rgba(16, 29, 52, 0.7); border: 1px solid rgba(30, 154, 243, 0.45); }
+
+/* list panel */
+#panel { overflow: hidden; }
+#listInner { position: absolute; left: 0; top: 0; width: 880px; height: 720px; }
+.lh { position: absolute; left: 44px; font-family: "Lexend"; font-weight: 700; font-size: 36px; letter-spacing: -0.5px; }
+.group { position: absolute; left: 44px; font-size: 16px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: #8494ab; }
+.row {
+  position: absolute; left: 40px; width: 800px; height: 88px; border-radius: 24px; box-sizing: border-box;
+  background: linear-gradient(90deg, rgba(20, 60, 60, 0.45), rgba(16, 36, 64, 0.45));
+  border: 1.5px solid rgba(255, 255, 255, 0.09);
+  display: flex; align-items: center; padding: 0 22px; gap: 20px;
+}
+.row .icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex: none; }
+.row .mid { flex: 1; }
+.row .v { font-family: "Lexend"; font-weight: 700; font-size: 28px; letter-spacing: -0.5px; }
+.row .v small { font-family: "Geist"; font-size: 17px; font-weight: 600; color: #9fb0c6; margin-left: 4px; letter-spacing: 0; }
+.row .c { font-size: 18px; color: #9aa8bc; margin-top: 3px; font-weight: 500; }
+.row .t { font-size: 21px; color: #b9c4d4; }
+.row .more { display: flex; gap: 5px; margin-left: 6px; }
+.row .more i { width: 6px; height: 6px; border-radius: 50%; background: #9aa8bc; display: block; }
+#progText { position: absolute; left: 44px; top: 106px; font-size: 20px; font-weight: 600; color: #c9d1dc; white-space: nowrap; }
+#progTrack { position: absolute; left: 44px; top: 142px; width: 792px; height: 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+#progBar { height: 100%; border-radius: 99px; }
+
+/* chart */
+#chart { position: absolute; left: 50%; top: 50%; width: 1180px; height: 300px; margin-left: -590px; margin-top: -150px; }
+.stat { font-size: 21px; color: #9fb0c6; font-weight: 600; background: rgba(16, 29, 52, 0.72); border: 1px solid rgba(34, 201, 160, 0.35); gap: 10px; padding: 12px 22px; }
+.stat b { font-family: "Lexend"; font-size: 30px; color: #fff; font-weight: 700; }
+
+/* outro */
+#outroText { font-family: "Lexend"; font-weight: 600; font-size: 66px; color: #d5dbe5; letter-spacing: -1px; white-space: nowrap; }
+.ochip { font-size: 22px; color: #d7e0ec; background: rgba(16, 29, 52, 0.72); border: 1px solid rgba(34, 201, 160, 0.38); }
+#wordmark { font-family: "Lexend"; font-weight: 800; font-size: 140px; letter-spacing: -4px; white-space: nowrap; line-height: 1; transform-origin: 0 50%; }
+#wordmark span { display: inline-block; }
+#disclaimer { font-size: 25px; font-weight: 500; color: #93a0b4; white-space: nowrap; }
+
+#cursor { transform-origin: 0 0; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.55)); }
+#grain { position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay; pointer-events: none; }
+#vignette { position: absolute; inset: 0; background: radial-gradient(90% 80% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%); }
+#fade { position: absolute; inset: 0; background: #000; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="glowTeal" class="abs glow-blob" style="background: radial-gradient(circle, rgba(34,201,160,0.24) 0%, rgba(14,58,51,0.18) 30%, rgba(5,11,22,0) 62%);"></div>
+  <div id="glowBlue" class="abs glow-blob" style="background: radial-gradient(circle, rgba(30,154,243,0.22) 0%, rgba(13,42,74,0.2) 32%, rgba(5,11,22,0) 64%);"></div>
+  <div id="glowCenter" class="abs" style="width: 1100px; height: 1100px; border-radius: 50%; background: radial-gradient(circle, rgba(34,201,160,0.28) 0%, rgba(30,154,243,0.12) 32%, rgba(5,11,22,0) 64%);"></div>
+
+  <!-- cena 1: ponto -->
+  <div id="dot" class="abs" style="width: 26px; height: 26px; border-radius: 50%; background: #22c9a0; box-shadow: 0 0 30px 8px rgba(34,201,160,0.7), 0 0 90px 30px rgba(34,201,160,0.35);"></div>
+
+  <!-- logo GlicoNexo (baseado em public/logo/gliconexo-mark.svg) -->
+  <svg id="logo" class="abs" width="260" height="260" viewBox="0 0 512 512" style="filter: drop-shadow(0 0 34px rgba(34,201,160,0.45)) drop-shadow(0 0 80px rgba(30,154,243,0.3));">
+    <defs>
+      <linearGradient id="bondTeal" x1="330" y1="160" x2="196" y2="300" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#22C9A0"/><stop offset="1" stop-color="#2b5a8f"/>
+      </linearGradient>
+      <linearGradient id="bondBlue" x1="150" y1="392" x2="196" y2="300" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#1E9AF3"/><stop offset="1" stop-color="#2b5a8f"/>
+      </linearGradient>
+      <linearGradient id="dropFill" x1="256" y1="38" x2="256" y2="476" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#21406f"/><stop offset="1" stop-color="#14294B"/>
+      </linearGradient>
+      <linearGradient id="dropRim" x1="120" y1="60" x2="400" y2="470" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#22C9A0"/><stop offset="1" stop-color="#1E9AF3"/>
+      </linearGradient>
+    </defs>
+    <g id="logoDrop">
+      <path d="M256 38 C256 38 116 224 116 328 C116 412 178 476 256 476 C334 476 396 412 396 328 C396 224 256 38 256 38 Z" fill="url(#dropFill)" stroke="url(#dropRim)" stroke-width="7" stroke-opacity="0.85"/>
+      <circle cx="196" cy="300" r="34" fill="#FFFFFF"/>
+    </g>
+    <line id="bondT" x1="222" y1="278" x2="304" y2="186" stroke="url(#bondTeal)" stroke-width="16" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1"/>
+    <line id="bondB" x1="172" y1="326" x2="156" y2="366" stroke="url(#bondBlue)" stroke-width="16" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1"/>
+    <circle cx="196" cy="300" r="34" fill="none" stroke="#14294B" stroke-width="13"/>
+    <g id="nodeT" style="transform-origin: 330px 160px;">
+      <circle cx="330" cy="160" r="48" fill="#FFFFFF"/><circle cx="330" cy="160" r="40" fill="#22C9A0"/>
+    </g>
+    <g id="nodeB" style="transform-origin: 150px 392px;">
+      <circle cx="150" cy="392" r="42" fill="#FFFFFF"/><circle cx="150" cy="392" r="34" fill="#1E9AF3"/>
+    </g>
+  </svg>
+
+  <!-- forma que se transforma: card -> tile -> cápsula -> botão -> badge -->
+  <div id="shape" class="abs glass">
+    <div id="cardContent" class="layer">
+      <div class="txt">
+        <div class="h">GlicoNexo</div>
+        <div class="s">Suas medições, organizadas.</div>
+      </div>
+      <div class="chip chip-teal">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Sincronizado
+      </div>
+    </div>
+    <div id="gloss" class="layer">
+      <div id="ghost">GlicoNexo</div>
+      <div id="spec"></div>
+    </div>
+    <div id="capsule" class="layer">
+      <div id="capFill"></div>
+      <div id="capShine"></div>
+    </div>
+    <div id="button" class="layer">
+      <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#14294B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+      <span class="btn-label" style="font-size: 44px;">Registrar glicemia</span>
+    </div>
+    <div id="badge" class="layer">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#14294B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+      <span class="btn-label" style="font-size: 28px;">Lendo o visor…</span>
+    </div>
+  </div>
+
+  <div id="ripples"></div>
+
+  <!-- cena 6: confirmação -->
+  <div id="confirm" class="abs glass" style="width: 660px; height: 470px; border-radius: 40px;">
+    <div id="confirmLabel" class="abs" style="left: 330px; top: 34px; transform: translateX(-50%); white-space: nowrap;">Valor reconhecido</div>
+    <div id="confirmHint" class="abs" style="left: 330px; top: 268px; transform: translateX(-50%);">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>
+      Confira o valor no visor antes de salvar
+    </div>
+    <div id="confirmBtn" class="abs" style="left: 120px; top: 340px; width: 420px; height: 84px; border-radius: 42px; background: linear-gradient(180deg, #3ee0b8 0%, #22c9a0 55%, #1cb892 100%); box-shadow: 0 0 36px rgba(34,201,160,0.45), inset 0 2px 0 rgba(255,255,255,0.45);">
+      <div id="confirmBtnLabel" class="abs btn-label" style="left: 210px; top: 42px; font-size: 30px;">Confirmar e salvar</div>
+      <div id="confirmBtnDone" class="abs btn-label" style="left: 210px; top: 42px; font-size: 30px; display: flex; align-items: center; gap: 10px;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#14294B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Salvo
+      </div>
+    </div>
+  </div>
+
+  <!-- cena 6: visor (cantos + dígitos de 7 segmentos) -->
+  <svg id="corners" class="abs" width="620" height="320" viewBox="0 0 620 320">
+    <path class="corner" d="M4 64 V26 A22 22 0 0 1 26 4 H64"/>
+    <path class="corner" d="M556 4 H594 A22 22 0 0 1 616 26 V64"/>
+    <path class="corner" d="M616 256 V294 A22 22 0 0 1 594 316 H556"/>
+    <path class="corner" d="M64 316 H26 A22 22 0 0 1 4 294 V256"/>
+  </svg>
+  <div id="readout" class="abs" style="width: 520px; height: 190px;">
+    <svg id="digits" width="360" height="190" viewBox="0 0 360 190" style="position: absolute; left: 0; top: 0;"></svg>
+    <div id="unit" class="abs" style="left: 378px; top: 128px;">mg/dL</div>
+  </div>
+  <div id="scanline" class="abs" style="width: 640px;"></div>
+
+  <!-- cena 7: leque de medições -->
+  <div id="fan"></div>
+  <div id="title7" class="abs title" style="font-size: 78px;"><span>Seu</span><span>histórico,</span><span class="teal">organizado.</span></div>
+  <div id="sub8" class="abs"><span id="subText"></span><span id="caret"></span></div>
+  <div id="chip8" class="abs chip">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4db3ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></svg>
+    Funciona mesmo sem internet
+  </div>
+
+  <!-- cena 9/10: painel do histórico -> pílula do gráfico -->
+  <div id="panel" class="abs glass">
+    <div id="listInner">
+      <div class="lh" style="top: 40px;">Histórico</div>
+      <div class="chip" style="position: absolute; right: 44px; top: 42px; font-size: 18px; color: #b9c4d4; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);">Últimos 7 dias</div>
+      <div id="progText"></div>
+      <div id="progTrack"><div id="progBar"></div></div>
+      <div id="rowsWrap"></div>
+    </div>
+    <svg id="chart" viewBox="0 0 1180 300"></svg>
+  </div>
+  <div id="stats" class="abs" style="display: flex; gap: 22px;"></div>
+  <div id="title10" class="abs title" style="font-size: 70px;"><span>Entenda</span><span>seus</span><span class="teal">registros.</span></div>
+
+  <!-- outro -->
+  <div id="outroText" class="abs">e muito mais</div>
+  <div id="outroChips" class="abs" style="display: flex; gap: 20px;"></div>
+  <div id="wordmark" class="abs"></div>
+  <div id="disclaimer" class="abs">Ferramenta de registro. Não substitui acompanhamento médico.</div>
+
+  <svg id="cursor" class="abs" width="54" height="64" viewBox="0 0 27 32">
+    <path d="M2 1.5 L2 25 L8.2 19.4 L12.2 28.6 L16.4 26.8 L12.5 17.8 L20.8 17.8 Z" fill="#ffffff" stroke="#0b1526" stroke-width="1.6" stroke-linejoin="round"/>
+  </svg>
+
+  <svg id="grain" width="1920" height="1080">
+    <filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+    <rect width="100%" height="100%" filter="url(#noise)"/>
+  </svg>
+  <div id="vignette"></div>
+  <div id="fade"></div>
+</div>
+
+<script>
+"use strict";
+const DURATION = 13.0;
+const $ = (id) => document.getElementById(id);
+
+// ---------- utilidades ----------
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, p) => a + (b - a) * p;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const eOutCubic = (p) => 1 - Math.pow(1 - p, 3);
+const eInCubic = (p) => p * p * p;
+const eInOutCubic = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+const eOutExpo = (p) => (p >= 1 ? 1 : 1 - Math.pow(2, -10 * p));
+const eOutBack = (p, s = 1.70158) => 1 + (s + 1) * Math.pow(p - 1, 3) + s * Math.pow(p - 1, 2);
+const eInOutSine = (p) => -(Math.cos(Math.PI * p) - 1) / 2;
+const fadeWin = (t, a, b, c, d) => Math.min(seg(t, a, b), 1 - seg(t, c, d));
+
+function place(el, o) {
+  if (o.w !== undefined) el.style.width = o.w + "px";
+  if (o.h !== undefined) el.style.height = o.h + "px";
+  if (o.r !== undefined) el.style.borderRadius = o.r + "px";
+  const tf =
+    `translate3d(${o.x}px, ${o.y}px, ${o.z || 0}px) translate(-50%, -50%) ` +
+    `rotateX(${o.rx || 0}deg) rotateY(${o.ry || 0}deg) rotateZ(${o.rz || 0}deg) ` +
+    `scale(${o.sx !== undefined ? o.sx : o.s !== undefined ? o.s : 1}, ${o.sy !== undefined ? o.sy : o.s !== undefined ? o.s : 1})`;
+  el.style.transform = tf;
+  const op = o.o === undefined ? 1 : o.o;
+  el.style.opacity = op;
+  el.style.visibility = op <= 0.001 ? "hidden" : "visible";
+  el.style.filter = o.blur ? `blur(${o.blur}px)` : "";
+}
+function show(el, op) {
+  el.style.opacity = op;
+  el.style.visibility = op <= 0.001 ? "hidden" : "visible";
+}
+function hash(a, b) {
+  let h = (a * 374761393 + b * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+
+// ---------- ícones (traços no estilo lucide) ----------
+const ICONS = {
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  coffee: '<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/>',
+  utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+  apple: '<path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/>',
+  soup: '<path d="M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9Z"/><path d="M7 21h10"/><path d="M19.5 12 22 6"/><path d="M16.25 3c.27.1.8.53.75 1.36-.06.83-.93 1.2-1 2.02-.05.78.34 1.24.73 1.62"/><path d="M11.25 3c.27.1.8.53.74 1.36-.05.83-.93 1.2-.98 2.02-.06.78.33 1.24.72 1.62"/><path d="M6.25 3c.27.1.8.53.75 1.36-.06.83-.93 1.2-1 2.02-.05.78.34 1.24.74 1.62"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  star: '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  lockOpen: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+  cloudOff: '<path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+};
+const icon = (name, size, color, sw = 2.2) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+
+// ---------- dados fictícios ----------
+const FAN = [
+  { v: 96, ctx: "Jejum", ic: "clock" },
+  { v: 128, ctx: "Café da manhã", ic: "coffee" },
+  { v: 142, ctx: "Almoço", ic: "utensils" },
+  { v: 110, ctx: "Lanche da tarde", ic: "apple" },
+  { v: 118, ctx: "Jantar", ic: "soup" },
+  { v: 104, ctx: "Antes de dormir", ic: "moon" },
+  { v: 99, ctx: "Madrugada", ic: "star" },
+  { v: 121, ctx: "Atividade física", ic: "activity" },
+];
+const ROWS = [
+  { key: "new", v: 128, ctx: "Café da manhã · OCR", time: "07:32", ic: "coffee", group: 0 },
+  { key: "r1", v: 96, ctx: "Jejum · Manual", time: "06:10", ic: "clock", group: 0 },
+  { key: "r2", v: 118, ctx: "Jantar · Manual", time: "19:42", ic: "soup", group: 1 },
+  { key: "r3", v: 142, ctx: "Almoço · OCR", time: "12:18", ic: "utensils", group: 1 },
+];
+const CHART = [96, 128, 142, 110, null, 118, 104, 121];
+const DAYS = ["18/09", "19/09", "20/09", "21/09", "22/09", "23/09", "24/09", "25/09"];
+
+// ---------- construção do DOM ----------
+const tints = [
+  ["rgba(34,201,160,0.16)", "#5eead4"],
+  ["rgba(30,154,243,0.18)", "#7cc4ff"],
+];
+const fanEls = FAN.map((m, i) => {
+  const el = document.createElement("div");
+  el.className = "abs glass mcard";
+  const [bg, fg] = tints[i % 2];
+  el.innerHTML =
+    `<div class="icon" style="background:${bg}">${icon(m.ic, 28, fg)}</div>` +
+    `<div class="val">${m.v}<small>mg/dL</small></div>` +
+    `<div class="ctx">${m.ctx}</div>` +
+    `<div class="status">${icon("check", 15, "#6ee79a", 3)}dentro da faixa</div>`;
+  $("fan").appendChild(el);
+  return el;
+});
+
+const rowEls = {};
+ROWS.forEach((r, i) => {
+  const el = document.createElement("div");
+  el.className = "row";
+  const [bg, fg] = tints[i % 2];
+  el.innerHTML =
+    `<div class="icon" style="background:${bg}">${icon(r.ic, 30, fg)}</div>` +
+    `<div class="mid"><div class="v">${r.v}<small>mg/dL</small></div><div class="c">${r.ctx}</div></div>` +
+    `<div class="t mono">${r.time}</div>` +
+    `${icon("check", 22, "#5eead4", 3)}` +
+    `<div class="more"><i></i><i></i><i></i></div>`;
+  $("rowsWrap").appendChild(el);
+  rowEls[r.key] = el;
+});
+const groupHoje = document.createElement("div");
+groupHoje.className = "group";
+groupHoje.textContent = "Hoje";
+const groupOntem = document.createElement("div");
+groupOntem.className = "group";
+groupOntem.textContent = "Ontem";
+$("rowsWrap").append(groupHoje, groupOntem);
+
+// ripples
+const rippleEls = Array.from({ length: 6 }, (_, i) => {
+  const el = document.createElement("div");
+  el.className = "abs";
+  el.style.boxSizing = "border-box";
+  el.style.border = `3px solid ${i % 2 ? "#1e9af3" : "#22c9a0"}`;
+  el.style.boxShadow = `0 0 30px ${i % 2 ? "rgba(30,154,243,0.35)" : "rgba(34,201,160,0.4)"}`;
+  $("ripples").appendChild(el);
+  return el;
+});
+
+// dígitos de 7 segmentos
+const SEGS = {
+  a: [0, 10, "h"], g: [0, 95, "h"], d: [0, 180, "h"],
+  f: [10, 0, "v"], b: [90, 0, "v"], e: [10, 85, "v"], c: [90, 85, "v"],
+};
+const DIGIT_SEGS = { 1: "bc", 2: "abged", 8: "abcdefg" };
+function segPoly(kind, x, y) {
+  if (kind === "h") return `${x + 14},${y} ${x + 23},${y - 9} ${x + 77},${y - 9} ${x + 86},${y} ${x + 77},${y + 9} ${x + 23},${y + 9}`;
+  return `${x},${y + 14} ${x + 9},${y + 23} ${x + 9},${y + 72} ${x},${y + 81} ${x - 9},${y + 72} ${x - 9},${y + 23}`;
+}
+const digitSegEls = [];
+{
+  const svg = $("digits");
+  const NS = "http://www.w3.org/2000/svg";
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("transform", "translate(22 0) skewX(-6)");
+  svg.appendChild(g);
+  [0, 1, 2].forEach((di) => {
+    const ox = di * 118;
+    const map = {};
+    Object.entries(SEGS).forEach(([name, [sx, sy, kind]]) => {
+      const ghost = document.createElementNS(NS, "polygon");
+      ghost.setAttribute("points", segPoly(kind, ox + sx, sy));
+      ghost.setAttribute("fill", "rgba(184,243,226,0.07)");
+      g.appendChild(ghost);
+      const p = document.createElementNS(NS, "polygon");
+      p.setAttribute("points", segPoly(kind, ox + sx, sy));
+      p.setAttribute("fill", "#e9fff8");
+      p.style.filter = "drop-shadow(0 0 8px rgba(34,201,160,0.9))";
+      g.appendChild(p);
+      map[name] = p;
+    });
+    digitSegEls.push(map);
+  });
+}
+
+// gráfico
+{
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = $("chart");
+  const X0 = 150, X1 = 1030, YT = 62, YB = 232;
+  const xOf = (i) => X0 + (i * (X1 - X0)) / 7;
+  const yOf = (v) => YB - ((v - 70) / 100) * (YB - YT);
+  const bandTop = yOf(150), bandBot = yOf(80);
+  let html = "";
+  html += `<defs><clipPath id="drawClip"><rect id="drawRect" x="0" y="0" width="0" height="300"/></clipPath>
+    <linearGradient id="bandGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(34,201,160,0.2)"/><stop offset="1" stop-color="rgba(34,201,160,0.08)"/></linearGradient>
+    <filter id="lineGlow" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+  html += `<rect x="${X0 - 30}" y="${bandTop}" width="${X1 - X0 + 60}" height="${bandBot - bandTop}" rx="12" fill="url(#bandGrad)" stroke="rgba(34,201,160,0.35)" stroke-dasharray="6 8"/>`;
+  html += `<text x="${X1 + 26}" y="${bandTop - 12}" text-anchor="end" font-family="Geist" font-weight="600" font-size="17" fill="#7fe3c9">faixa configurada</text>`;
+  DAYS.forEach((d, i) => {
+    html += `<text x="${xOf(i)}" y="${YB + 44}" text-anchor="middle" font-family="Geist Mono" font-size="15" fill="${CHART[i] === null ? "#4d5a70" : "#8494ab"}">${d}</text>`;
+  });
+  const segs = [[0, 1, 2, 3], [5, 6, 7]];
+  html += `<g clip-path="url(#drawClip)" filter="url(#lineGlow)">`;
+  segs.forEach((s) => {
+    const d = s.map((i, k) => `${k ? "L" : "M"}${xOf(i)} ${yOf(CHART[i])}`).join(" ");
+    html += `<path d="${d}" fill="none" stroke="#22c9a0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  });
+  html += `</g>`;
+  CHART.forEach((v, i) => {
+    if (v === null) return;
+    html += `<g class="pt" data-i="${i}" style="transform-origin:${xOf(i)}px ${yOf(v)}px"><circle cx="${xOf(i)}" cy="${yOf(v)}" r="16" fill="rgba(34,201,160,0.25)"/><circle cx="${xOf(i)}" cy="${yOf(v)}" r="8.5" fill="#fff" stroke="#22c9a0" stroke-width="4"/></g>`;
+  });
+  svg.innerHTML = html;
+  window.__chartX = CHART.map((_, i) => xOf(i));
+}
+const ptEls = Array.from(document.querySelectorAll("#chart .pt"));
+
+// stats e chips do outro
+[["Média", 117], ["Mín.", 96], ["Máx.", 142]].forEach(([k, v]) => {
+  const el = document.createElement("div");
+  el.className = "chip stat";
+  el.innerHTML = `${k} <b>${v}</b> mg/dL`;
+  $("stats").appendChild(el);
+});
+const statEls = Array.from($("stats").children);
+[["file", "PDF e CSV", "#5eead4"], ["cloudOff", "Offline", "#7cc4ff"], ["shield", "Privacidade", "#5eead4"]].forEach(([ic, txt, c]) => {
+  const el = document.createElement("div");
+  el.className = "chip ochip";
+  el.innerHTML = `${icon(ic, 24, c)}${txt}`;
+  $("outroChips").appendChild(el);
+});
+const ochipEls = Array.from($("outroChips").children);
+
+// wordmark
+const wmLetters = "GlicoNexo".split("").map((ch, i) => {
+  const s = document.createElement("span");
+  s.textContent = ch;
+  s.style.color = i < 5 ? "#ffffff" : "#22c9a0";
+  $("wordmark").appendChild(s);
+  return s;
+});
+
+const SUBTITLE = "Cada medição com data, horário e contexto.";
+
+// ---------- cursor ----------
+function cursorState(t) {
+  const paths = [
+    { a: 3.1, b: 3.45, from: [1700, 1030], to: [1150, 575], down: 3.47, fadeA: 3.72, fadeB: 3.86, exit: [1220, 650] },
+    { a: 4.24, b: 4.4, from: [1360, 900], to: [1128, 722], down: 4.43, fadeA: 4.55, fadeB: 4.66, exit: [1190, 790] },
+    { a: 7.98, b: 8.34, from: [1640, 1020], to: [1160, 442], down: 8.42, fadeA: 8.66, fadeB: 8.9, exit: [1260, 560] },
+  ];
+  for (const p of paths) {
+    if (t >= p.a - 0.001 && t <= p.fadeB) {
+      const k = eOutCubic(seg(t, p.a, p.b));
+      let x = lerp(p.from[0], p.to[0], k);
+      let y = lerp(p.from[1], p.to[1], k);
+      const ex = eInOutCubic(seg(t, p.fadeA, p.fadeB));
+      x = lerp(x, p.exit[0], ex);
+      y = lerp(y, p.exit[1], ex);
+      const o = seg(t, p.a, p.a + 0.12) * (1 - seg(t, p.fadeA, p.fadeB));
+      const press = pressAmt(t, p.down);
+      return { x, y, o, press };
+    }
+  }
+  return { x: 0, y: 0, o: 0, press: 0 };
+}
+function pressAmt(t, down) {
+  if (t < down) return 0;
+  if (t < down + 0.06) return eOutCubic(seg(t, down, down + 0.06));
+  return 1 - eOutCubic(seg(t, down + 0.06, down + 0.22));
+}
+
+// ---------- render ----------
+let lockup = null;
+function computeLockup() {
+  const wordW = $("wordmark").getBoundingClientRect().width;
+  const markW = 260 * 0.8;
+  const gap = 34;
+  const total = markW + gap + wordW;
+  const left = 960 - total / 2;
+  lockup = { markX: left + markW / 2, wordX: left + markW + gap, wordW };
+}
+
+function renderFrame(t) {
+  if (!lockup) computeLockup();
+
+  // ---- fundo ambiente ----
+  const breath = 0.78 + 0.22 * Math.sin((2 * Math.PI * t) / 3.9);
+  place($("glowTeal"), { x: 560 + 90 * Math.sin(t * 0.33), y: 400 + 60 * Math.cos(t * 0.29), o: breath });
+  place($("glowBlue"), { x: 1390 + 80 * Math.cos(t * 0.27), y: 700 + 70 * Math.sin(t * 0.31), o: 0.7 + 0.3 * Math.sin((2 * Math.PI * (t + 1.3)) / 4.4) });
+  let cg = 0, cgs = 1, cgx = 960, cgy = 540;
+  if (t < 1.4) { cg = eOutCubic(seg(t, 0.05, 0.8)); cgs = lerp(0.35, 1.1, eOutCubic(seg(t, 0.05, 0.9))); cgx = lerp(960, 820, eInOutCubic(seg(t, 0.8, 1.1))); }
+  else if (t < 3.8) { cg = 0.8; cgs = 0.9 + 0.08 * Math.sin(t * 3); }
+  else if (t < 10.6) { cg = 0.45; cgs = 1.2; }
+  else { cg = 0.9 * eOutCubic(seg(t, 10.6, 11.2)) * (0.85 + 0.15 * Math.sin((2 * Math.PI * (t - 10.6)) / 1.6)); cgs = 0.95 + 0.07 * Math.sin((2 * Math.PI * (t - 10.6)) / 1.6); cgx = t < 11.2 ? 960 : lerp(960, lockup.markX, eInOutCubic(seg(t, 11.2, 11.65))); }
+  place($("glowCenter"), { x: cgx, y: cgy, s: cgs, o: cg });
+
+  // ---- cena 1: ponto ----
+  {
+    const pIn = eOutBack(seg(t, 0.0, 0.14), 2.2);
+    const stretch = eInOutCubic(seg(t, 0.12, 0.3));
+    const out = seg(t, 0.28, 0.38);
+    place($("dot"), { x: 960, y: 540 - 26 * stretch, sx: pIn * (1 - 0.25 * stretch), sy: pIn * (1 + 1.6 * stretch), o: (t < 0.02 ? 0 : 1) * (1 - out) });
+  }
+
+  // ---- logo ----
+  {
+    const logo = $("logo");
+    let o = 0, s = 1, x = 960, y = 540, blur = 0;
+    if (t < 1.7) {
+      const pin = seg(t, 0.26, 0.62);
+      s = lerp(0.2, 1, eOutBack(pin, 1.6));
+      o = seg(t, 0.26, 0.36);
+      const mv = eInOutCubic(seg(t, 0.8, 1.1));
+      x = lerp(960, 640, mv);
+      s *= lerp(1, 0.72, mv);
+      const exit = eInCubic(seg(t, 1.4, 1.66));
+      x -= 80 * exit;
+      s *= 1 - 0.35 * exit;
+      o *= 1 - exit;
+    } else if (t >= 10.55) {
+      const pin = seg(t, 10.6, 11.15);
+      o = eOutCubic(seg(t, 10.6, 10.9));
+      blur = 16 * (1 - eOutCubic(pin));
+      s = lerp(0.7, 1, eOutBack(pin, 1.3)) * (1 + 0.025 * Math.sin((2 * Math.PI * (t - 10.6)) / 1.6));
+      const mv = eInOutCubic(seg(t, 11.2, 11.65));
+      x = lerp(960, lockup.markX, mv);
+      s *= lerp(1, 0.8, mv);
+    }
+    place(logo, { x, y, s, o, blur });
+    const intro = t < 2;
+    const bt = intro ? eOutCubic(seg(t, 0.4, 0.55)) : 1;
+    const bb = intro ? eOutCubic(seg(t, 0.5, 0.64)) : 1;
+    $("bondT").style.strokeDashoffset = 1 - bt;
+    $("bondB").style.strokeDashoffset = 1 - bb;
+    const nt = intro ? eOutBack(seg(t, 0.52, 0.64), 2.6) : 1;
+    const nb = intro ? eOutBack(seg(t, 0.6, 0.72), 2.6) : 1;
+    $("nodeT").style.transform = `scale(${nt})`;
+    $("nodeB").style.transform = `scale(${nb})`;
+  }
+
+  // ---- forma: card -> tile -> cápsula -> botão -> badge ----
+  {
+    const sh = $("shape");
+    let st = { x: 1080, y: 540, w: 620, h: 150, r: 36, o: 0 };
+    let card = 0, gloss = 0, cap = 0, btn = 0, badge = 0;
+    if (t >= 0.8 && t < 1.4) {
+      const k = eOutCubic(seg(t, 0.8, 1.15));
+      st = { x: lerp(1330, 1080, k), y: 540, w: 620, h: 150, r: 36, o: seg(t, 0.8, 1.0), blur: 8 * (1 - k) };
+      card = 1;
+    } else if (t >= 1.4 && t < 2.0) {
+      const p = seg(t, 1.4, 2.0);
+      const k = eInOutCubic(p);
+      const arc = Math.sin(Math.PI * p);
+      st = {
+        x: lerp(1080, 960, eInOutCubic(seg(t, 1.4, 1.75))), y: 540 - 70 * arc, z: 160 * arc,
+        w: 620, h: 150, r: 36,
+        rx: 34 * Math.sin(2 * Math.PI * p) * (1 - p * 0.3),
+        ry: -38 * Math.sin(Math.PI * p * 1.5) * (1 - p),
+        rz: 360 * k,
+        s: 1 - 0.1 * arc, o: 1,
+      };
+      card = 1 - seg(t, 1.42, 1.58);
+      gloss = seg(t, 1.45, 1.62);
+    } else if (t >= 2.0 && t < 3.0) {
+      const k = eInOutCubic(seg(t, 2.0, 2.4));
+      const bob = Math.sin((t - 2.0) * 5) * 6 * seg(t, 2.3, 2.5);
+      st = { x: 960, y: 540 + bob, w: lerp(620, 150, k), h: lerp(150, 330, k), r: lerp(36, 75, k), o: 1 };
+      gloss = 1 - seg(t, 2.15, 2.4);
+      cap = seg(t, 2.15, 2.4);
+    } else if (t >= 3.0 && t < 3.8) {
+      const k = eOutBack(seg(t, 3.0, 3.32), 1.4);
+      const press = pressAmt(t, 3.47);
+      st = { x: 960, y: 540, w: lerp(150, 660, k), h: lerp(330, 132, clamp(k)), r: lerp(75, 66, clamp(k)), o: 1, s: 1 - 0.06 * press };
+      cap = 1 - seg(t, 3.0, 3.16);
+      btn = seg(t, 3.02, 3.18);
+    } else if (t >= 3.8 && t < 4.34) {
+      const k = eInOutCubic(seg(t, 3.8, 4.02));
+      st = { x: 960, y: lerp(540, 238, k), w: lerp(660, 330, k), h: lerp(132, 66, k), r: lerp(66, 33, k), o: 1 - seg(t, 4.2, 4.32) };
+      btn = 1 - seg(t, 3.8, 3.9);
+      badge = seg(t, 3.84, 3.96);
+    }
+    place(sh, st);
+    show($("cardContent"), card);
+    show($("gloss"), gloss);
+    show($("capsule"), cap);
+    show($("button"), btn);
+    show($("badge"), badge);
+    sh.style.borderColor = cap > 0 || btn > 0 || badge > 0 ? "rgba(255,255,255,0.35)" : "rgba(34,201,160,0.42)";
+    let glow = 0.16;
+    if (t >= 1.4 && t < 3.8) glow = 0.55 + 0.2 * Math.sin(t * 7);
+    if (t >= 3.4 && t < 3.8) glow = 0.55 + 0.35 * pressAmt(t, 3.47);
+    sh.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.14), 0 34px 70px -24px rgba(0,0,0,0.8), 0 0 ${60 + 40 * glow}px rgba(34,201,160,${glow.toFixed(3)})`;
+    // specular + ghost
+    const sp = seg(t, 1.55, 1.95);
+    $("spec").style.transform = `translateX(${lerp(-200, 820, eInOutCubic(sp))}px) rotate(22deg)`;
+    $("ghost").style.transform = `translate(${lerp(420, -520, eInOutCubic(seg(t, 1.42, 2.0)))}px, -50%)`;
+    // cápsula enchendo
+    const fill = eInOutCubic(seg(t, 2.3, 2.95));
+    $("capFill").style.height = `${lerp(0, 50, fill)}%`;
+  }
+
+  // ---- ripples ----
+  rippleEls.forEach((el, i) => {
+    const a = 3.8 + i * 0.05;
+    const p = seg(t, a, a + 0.62);
+    const k = eOutCubic(p);
+    place(el, { x: 960, y: 540, w: 660 + 1500 * k, h: 132 + 900 * k, r: 66 + 220 * k, o: p > 0 && p < 1 ? (1 - p) * 0.85 : 0 });
+  });
+
+  // ---- visor + OCR ----
+  {
+    const vin = eOutCubic(seg(t, 3.9, 4.06));
+    const vout = seg(t, 4.2, 4.32);
+    place($("corners"), { x: 960, y: 560, s: lerp(1.25, 1, vin), o: vin * (1 - vout) });
+    const toConfirm = eInOutCubic(seg(t, 4.2, 4.36));
+    const exitCard = eInCubic(seg(t, 4.56, 4.74));
+    const rOpacity = seg(t, 3.92, 4.04) * (1 - exitCard);
+    place($("readout"), {
+      x: lerp(960, 960, toConfirm), y: lerp(565, 468, toConfirm) + lerp(0, 300, exitCard),
+      s: lerp(1, 0.62, toConfirm) * (1 - 0.7 * exitCard), o: rOpacity,
+    });
+    const resolved = t >= 4.17;
+    const frameIdx = Math.floor(t * 60);
+    const target = ["1", "2", "8"];
+    digitSegEls.forEach((map, di) => {
+      const on = DIGIT_SEGS[target[di]];
+      Object.entries(map).forEach(([name, el], si) => {
+        let vis;
+        if (resolved) vis = on.includes(name) ? 1 : 0;
+        else vis = hash(Math.floor(frameIdx / 3) + di * 17, si + 3) > 0.55 ? 0.55 : 0;
+        el.style.opacity = vis;
+      });
+    });
+    $("unit").style.opacity = seg(t, 4.17, 4.25);
+    const sc = seg(t, 4.0, 4.22);
+    place($("scanline"), { x: 960, y: lerp(430, 700, eInOutSine(sc)), o: sc > 0 && sc < 1 ? Math.sin(Math.PI * sc) : 0 });
+
+    const cin = eOutBack(seg(t, 4.2, 4.36), 1.2);
+    place($("confirm"), {
+      x: 960, y: 560 + lerp(0, 300, exitCard),
+      s: lerp(0.9, 1, cin) * (1 - 0.7 * exitCard) * (1 - 0.04 * pressAmt(t, 4.43) * 0),
+      o: seg(t, 4.2, 4.3) * (1 - exitCard),
+    });
+    const bp = pressAmt(t, 4.43);
+    $("confirmBtn").style.transform = `scale(${1 - 0.07 * bp})`;
+    const done = seg(t, 4.48, 4.54);
+    $("confirmBtnLabel").style.opacity = 1 - done;
+    $("confirmBtnDone").style.opacity = done;
+    $("confirmBtnLabel").style.transform = `translate(-50%, -50%) translateY(${-14 * done}px)`;
+    $("confirmBtnDone").style.transform = `translate(-50%, -50%) translateY(${14 * (1 - done)}px)`;
+  }
+
+  // ---- cena 7/8: leque ----
+  const dissolve = eInOutCubic(seg(t, 6.34, 6.62));
+  {
+    const PX = 960, PY = 1450, R = 1100;
+    fanEls.forEach((el, i) => {
+      const a0 = 4.6 + i * 0.055;
+      const p = seg(t, a0, a0 + 0.42);
+      const k = eOutBack(p, 1.25);
+      const ang = (i - 3.5) * 9.6;
+      const rad = (ang * Math.PI) / 180;
+      const fx = PX + R * Math.sin(rad), fy = PY - R * Math.cos(rad);
+      const jitter = [-1.6, 1.2, -0.8, 1.8, -1.4, 0.9, -1.1, 1.5][i];
+      const floaty = Math.sin(t * 1.6 + i) * 4 * seg(t, 5.1, 5.4);
+      place(el, {
+        x: lerp(960, fx, k), y: lerp(880, fy, k) + floaty, rz: lerp(0, ang + jitter, k),
+        s: lerp(0.55, 1, k) * (1 + 0.04 * dissolve), o: seg(t, a0, a0 + 0.08) * (1 - dissolve), blur: 10 * dissolve,
+      });
+      el.style.zIndex = String(i);
+    });
+    const tw = $("title7").children;
+    [5.0, 5.12, 5.24].forEach((a, i) => {
+      const p = eOutCubic(seg(t, a, a + 0.26));
+      tw[i].style.opacity = p;
+      tw[i].style.transform = `translateY(${30 * (1 - p)}px)`;
+      tw[i].style.filter = `blur(${6 * (1 - p)}px)`;
+    });
+    place($("title7"), { x: 960, y: 718, o: (t >= 4.9 ? 1 : 0) * (1 - dissolve), blur: 10 * dissolve, s: 1 + 0.03 * dissolve });
+
+    const typeP = seg(t, 5.6, 6.12);
+    const nChars = Math.floor(typeP * SUBTITLE.length + 0.0001);
+    $("subText").textContent = SUBTITLE.slice(0, nChars);
+    $("caret").style.opacity = t < 6.12 ? 1 : Math.floor((t - 6.12) / 0.25) % 2 === 0 ? 1 : 0;
+    place($("sub8"), { x: 960 + 2, y: 806, o: (t >= 5.58 ? 1 : 0) * (1 - dissolve), blur: 10 * dissolve });
+    const cp = eOutBack(seg(t, 6.02, 6.24), 1.5);
+    place($("chip8"), { x: 960, y: lerp(920, 888, cp), o: seg(t, 6.02, 6.12) * (1 - dissolve), blur: 10 * dissolve });
+  }
+
+  // ---- cena 9/10: histórico -> gráfico ----
+  {
+    const pin = eOutCubic(seg(t, 6.6, 7.0));
+    const morph = eInOutCubic(seg(t, 9.0, 9.32));
+    const outro = eInOutCubic(seg(t, 10.0, 10.22));
+    place($("panel"), {
+      x: 960, y: lerp(lerp(600, 540, pin), 440, morph),
+      w: lerp(880, 1180, morph), h: lerp(720, 300, morph), r: lerp(40, 150, morph),
+      o: seg(t, 6.6, 6.82) * (1 - outro), blur: 12 * outro, s: 1 + 0.05 * outro,
+    });
+    const listVis = 1 - seg(t, 9.0, 9.12);
+    const scroll = lerp(260, 0, eOutCubic(seg(t, 6.6, 7.35)));
+    $("listInner").style.opacity = listVis;
+    $("listInner").style.transform = `translate(${lerp(0, 150, morph)}px, ${scroll - lerp(0, 210, morph)}px)`;
+
+    // inserção da nova linha
+    const ins = eInOutCubic(seg(t, 7.35, 7.62));
+    const slide = eOutCubic(seg(t, 7.42, 7.72));
+    const rowGap = 100;
+    const yH = 180;
+    groupHoje.style.top = yH + "px";
+    let y = yH + 34;
+    const newEl = rowEls.new;
+    newEl.style.top = y + "px";
+    newEl.style.opacity = slide;
+    newEl.style.transform = `translateX(${-60 * (1 - slide)}px) scale(${lerp(0.96, 1, slide)})`;
+    y += rowGap * ins;
+    rowEls.r1.style.top = y + "px";
+    y += rowGap + 12;
+    groupOntem.style.top = y + "px";
+    y += 34;
+    rowEls.r2.style.top = y + "px";
+    rowEls.r3.style.top = y + rowGap + "px";
+    // seleção
+    const sel = seg(t, 8.43, 8.6);
+    newEl.style.borderColor = `rgba(34,201,160,${lerp(0.09, 0.9, sel)})`;
+    newEl.style.boxShadow = `0 0 ${40 * sel}px rgba(34,201,160,${0.45 * sel}), inset 0 0 ${30 * sel}px rgba(34,201,160,${0.18 * sel})`;
+    newEl.style.background = sel > 0
+      ? `linear-gradient(90deg, rgba(34,201,160,${0.1 + 0.16 * sel}), rgba(30,154,243,${0.08 + 0.1 * sel}))`
+      : "";
+    newEl.style.scale = String(1 - 0.02 * pressAmt(t, 8.42));
+
+    // progresso X de 4
+    const fillP = eInOutCubic(seg(t, 7.55, 7.86));
+    const unlocked = seg(t, 7.9, 8.04);
+    const count = t >= 7.62 ? 4 : 3;
+    $("progText").innerHTML = unlocked > 0.5
+      ? `<span style="display:inline-flex;align-items:center;gap:10px;color:#5eead4">${icon("lockOpen", 24, "#5eead4")}Análises liberadas</span>`
+      : `<b style="color:#fff">${count} de 4</b> medições registradas`;
+    $("progText").style.opacity = unlocked > 0 && unlocked < 1 ? Math.abs(unlocked - 0.5) * 2 : 1;
+    const bar = $("progBar");
+    bar.style.width = `${lerp(75, 100, fillP)}%`;
+    bar.style.background = unlocked > 0.5
+      ? "linear-gradient(90deg, #22c9a0, #5eead4)"
+      : "linear-gradient(90deg, #1e9af3, #4db3ff)";
+    bar.style.boxShadow = unlocked > 0.5 ? `0 0 ${18 + 10 * Math.sin(t * 10)}px rgba(34,201,160,0.8)` : "none";
+
+    // gráfico
+    const chartVis = seg(t, 9.12, 9.3);
+    $("chart").style.opacity = chartVis;
+    const draw = eInOutSine(seg(t, 9.28, 9.78));
+    const drawX = lerp(100, 1060, draw);
+    document.getElementById("drawRect").setAttribute("width", String(drawX));
+    ptEls.forEach((el) => {
+      const i = Number(el.dataset.i);
+      const px = window.__chartX[i];
+      const at = 9.28 + ((px - 100) / 960) * 0.5;
+      const p = eOutBack(seg(t, at, at + 0.14), 2.4);
+      el.style.transform = `scale(${p})`;
+      el.style.opacity = seg(t, at, at + 0.04);
+    });
+    statEls.forEach((el, i) => {
+      const a = 9.52 + i * 0.1;
+      const p = eOutBack(seg(t, a, a + 0.2), 1.8);
+      el.style.opacity = seg(t, a, a + 0.06);
+      el.style.transform = `translateY(${24 * (1 - p)}px) scale(${lerp(0.7, 1, p)})`;
+    });
+    place($("stats"), { x: 960, y: 672, o: (t >= 9.5 ? 1 : 0) * (1 - outro), blur: 10 * outro });
+    const tw = $("title10").children;
+    [9.64, 9.74, 9.84].forEach((a, i) => {
+      const p = eOutCubic(seg(t, a, a + 0.22));
+      tw[i].style.opacity = p;
+      tw[i].style.transform = `translateY(${28 * (1 - p)}px)`;
+      tw[i].style.filter = `blur(${6 * (1 - p)}px)`;
+    });
+    place($("title10"), { x: 960, y: 800, o: (t >= 9.6 ? 1 : 0) * (1 - outro), blur: 10 * outro });
+  }
+
+  // ---- outro ----
+  {
+    const tin = eOutCubic(seg(t, 10.12, 10.34));
+    const tout = eInOutCubic(seg(t, 10.48, 10.64));
+    place($("outroText"), { x: 960, y: 500 - 10 * tout, o: tin * (1 - tout), blur: 8 * (1 - tin) + 10 * tout, s: lerp(0.96, 1, tin) });
+    ochipEls.forEach((el, i) => {
+      const a = 10.24 + i * 0.06;
+      const p = eOutBack(seg(t, a, a + 0.14), 2);
+      el.style.opacity = seg(t, a, a + 0.05);
+      el.style.transform = `scale(${lerp(0.6, 1, p)})`;
+    });
+    place($("outroChips"), { x: 960, y: 606, o: (t >= 10.2 ? 1 : 0) * (1 - tout), blur: 10 * tout });
+
+    const wmVis = t >= 11.25 ? 1 : 0;
+    $("wordmark").style.transform = `translate(${lockup.wordX}px, 540px) translateY(-50%)`;
+    $("wordmark").style.opacity = wmVis;
+    $("wordmark").style.visibility = wmVis ? "visible" : "hidden";
+    wmLetters.forEach((s, i) => {
+      const a = 11.3 + i * 0.045;
+      const p = eOutCubic(seg(t, a, a + 0.26));
+      s.style.opacity = p;
+      s.style.transform = `translateX(${90 * (1 - p)}px)`;
+      s.style.filter = `blur(${8 * (1 - p)}px)`;
+    });
+    place($("disclaimer"), { x: 960, y: 700, o: eOutCubic(seg(t, 11.95, 12.3)) });
+  }
+
+  // ---- cursor ----
+  {
+    const c = cursorState(t);
+    const cur = $("cursor");
+    cur.style.transform = `translate(${c.x}px, ${c.y}px) scale(${1 - 0.14 * c.press})`;
+    show(cur, c.o);
+  }
+
+  // ---- fade final ----
+  show($("fade"), t >= 12.96 ? 1 : eInCubic(seg(t, 12.45, 12.96)));
+}
+
+window.renderFrame = renderFrame;
+window.DURATION = DURATION;
+window.__ready = document.fonts.ready.then(() => {
+  computeLockup();
+  renderFrame(0);
+  return true;
+});
+</script>
+</body>
+</html>
