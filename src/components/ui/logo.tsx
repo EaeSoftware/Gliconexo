@@ -17,7 +17,7 @@ export function Logo({ size = "md", className }: LogoProps) {
   return (
     <span className={`inline-flex items-center gap-2 ${className ?? ""}`}>
       <Image
-        src="/logo/gliconexo-mark.svg"
+        src="/logo/gliconexo-mark-v2.svg"
         alt=""
         width={icon}
         height={icon}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ExportAllDataButton } from "@/features/privacy/components/export-all-data-button";
 import { RevokeConsentButton } from "@/features/privacy/components/revoke-consent-button";
-import { DeleteAccountButton } from "@/features/privacy/components/delete-account-button";
+import { DeleteAccountSection } from "@/features/privacy/components/delete-account-section";
 
 export const metadata: Metadata = { title: "Privacidade" };
 
@@ -35,14 +35,7 @@ export default function PrivacidadeAppPage() {
         <RevokeConsentButton />
       </section>
 
-      <section className="rounded-2xl border border-status-below/40 bg-status-below/5 p-5">
-        <h2 className="mb-2 font-semibold text-foreground">Excluir conta e dados</h2>
-        <p className="mb-3 text-sm text-foreground/70">
-          Remove permanentemente sua conta e os dados vinculados, conforme a
-          política de retenção documentada.
-        </p>
-        <DeleteAccountButton />
-      </section>
+      <DeleteAccountSection />
     </div>
   );
 }

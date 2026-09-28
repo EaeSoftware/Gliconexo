@@ -18,7 +18,7 @@
 // que exija invalidar o cache antigo. Documentado em
 // docs/architecture.md ("Service worker e cache").
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v3";
 const STATIC_CACHE = `gliconexo-static-${CACHE_VERSION}`;
 const SHELL_CACHE = `gliconexo-shell-${CACHE_VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, SHELL_CACHE];
@@ -30,7 +30,7 @@ const OFFLINE_URL = "/offline";
 // (desde que o service worker já tenha sido instalado numa visita
 // online anterior — isso é uma limitação inerente a qualquer PWA, não
 // deste service worker em particular).
-const PRECACHE_URLS = [OFFLINE_URL, "/icons/icon-192.png", "/manifest.webmanifest"];
+const PRECACHE_URLS = [OFFLINE_URL, "/icons/icon-192-v2.png", "/manifest.webmanifest"];
 
 // Rotas protegidas (autenticadas, com dados de saúde) — nunca cacheadas.
 // Ver CLAUDE.md, seção 14: "nao cachear HTML autenticado com dados

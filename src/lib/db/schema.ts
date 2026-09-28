@@ -106,3 +106,13 @@ export async function clearActiveUserLocalData(): Promise<void> {
   }
   await Dexie.delete(name);
 }
+
+/**
+ * Apaga o banco local do usuário ativo. Usado depois de excluir a conta,
+ * para que nenhum dado privado permaneça no aparelho. Alias de
+ * `clearActiveUserLocalData` mantido para compatibilidade com o fluxo de
+ * exclusão de conta.
+ */
+export async function deleteLocalDatabase(): Promise<void> {
+  await clearActiveUserLocalData();
+}

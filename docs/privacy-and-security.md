@@ -64,6 +64,25 @@ inicial, no onboarding e nas telas do app.
   — liberando a câmera só para a própria origem (necessária para o OCR)
   e negando microfone/geolocalização, que o app não usa.
 
+### Exclusão de conta
+
+`POST /api/conta/excluir` (`src/app/api/conta/excluir/route.ts`):
+
+1. aceita só requisições da mesma origem (`Origin` igual ao host);
+2. identifica o usuário pela sessão (cookies), nunca por id vindo do cliente;
+3. recusa visitantes anônimos (a opção é para contas com e-mail e senha);
+4. reconfirma a senha num cliente Supabase isolado, sem persistir sessão;
+5. apaga o usuário com `auth.admin.deleteUser` usando
+   `SUPABASE_SERVICE_ROLE_KEY`, que existe só no servidor. Os dados em
+   `profiles`, `user_preferences`, `glucose_measurements` e
+   `consent_records` saem junto por `on delete cascade`;
+6. devolve mensagens genéricas, sem detalhes internos;
+7. o cliente apaga o IndexedDB local e encerra a sessão depois do sucesso.
+
+Sem `SUPABASE_SERVICE_ROLE_KEY` configurada no ambiente (Vercel), a rota
+responde 503 e a tela mostra "temporariamente indisponível". Pendente:
+rate limiting dedicado nesta rota.
+
 ## Pendente (fases seguintes)
 
 - HTTPS em produção (depende do provedor de deploy — pendência

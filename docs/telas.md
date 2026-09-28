@@ -252,7 +252,7 @@ nativo inesperado no Android/iOS. **O que falta:** exportação em PDF
 - **Instalar aplicativo** — ✅ `InstallPwaButton` usa o evento real `beforeinstallprompt`; se o app já estiver instalado, mostra uma mensagem em vez do botão; no iOS, mostra a instrução manual de "Adicionar à Tela de Início".
 - **Faixa pessoal de glicemia** — ✅ `TargetRangeForm` (`src/features/preferences/components/target-range-form.tsx`) salva mínimo/máximo de verdade no IndexedDB (`preferencesRepository`, tabela `preferences`). Validação exige os dois valores juntos (ou nenhum) e mínimo &lt; máximo (`targetRangeSchema`, testado). Assim que salva, os selos de classificação e os percentuais em Histórico/Análises passam a considerar essa faixa — sem prometer nenhuma recomendação médica, só a informação.
 - **Sincronização** — ⚪ só texto explicando o que vai existir.
-- **Privacidade e dados** — 🟡 **"Exportar todos os dados"** agora é real (`ExportAllDataButton`): baixa/compartilha um JSON com todas as medições ativas e a faixa pessoal salvas neste dispositivo. **"Excluir conta e dados"** continua desabilitado de propósito — apagar a "conta" não faz sentido sem autenticação real, e o fluxo de exclusão do CLAUDE.md (seção 15) exige identificar o usuário pela sessão, nunca por um id enviado do cliente.
+- **Privacidade e dados** — 🟡 **"Exportar todos os dados"** agora é real (`ExportAllDataButton`): baixa/compartilha um JSON com todas as medições ativas e a faixa pessoal salvas neste dispositivo. **"Excluir conta e dados"** leva à seção de exclusão em `/app/privacidade` (ver abaixo).
 - **Sobre** — ✅ mostra a versão do app e links para as políticas públicas.
 
 ### `/app/privacidade` — Central de privacidade (dentro do app)
@@ -261,10 +261,12 @@ nativo inesperado no Android/iOS. **O que falta:** exportação em PDF
 Diferente de `/privacidade` (a política pública), esta é a tela de
 **ações** do usuário sobre os próprios dados. "Exportar meus dados" usa
 o mesmo `ExportAllDataButton` de Configurações — botão real, gera o
-JSON completo. "Revogar consentimento" e "Excluir conta e dados"
-continuam desabilitados: dependem da função server-side de exclusão de
-conta (Fase 7 / seção 15 do `CLAUDE.md`), que por sua vez depende da
-autenticação real (Fase 2).
+JSON completo. "Excluir conta e dados" (`DeleteAccountSection`) fica
+ativo para contas com e-mail e senha: pede a senha atual e a palavra
+`EXCLUIR`, chama `POST /api/conta/excluir` e, após sucesso, apaga o
+IndexedDB local e encerra a sessão. No modo visitante (login anônimo) a
+seção explica que a exclusão é só para contas com e-mail. "Revogar
+consentimento" continua desabilitado.
 
 ---
 
