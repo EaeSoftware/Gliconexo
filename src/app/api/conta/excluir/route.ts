@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Exclusão de conta (CLAUDE.md, seção 15): o usuário é identificado
 // sempre pela sessão (cookies), nunca por um `user_id` vindo do
@@ -26,8 +27,7 @@ export async function POST(request: NextRequest) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !anonKey || !serviceRoleKey) {
+  if (!url || !anonKey) {
     return json(503, "A exclusão de conta está temporariamente indisponível.");
   }
 
@@ -67,9 +67,12 @@ export async function POST(request: NextRequest) {
   }
   await verifier.auth.signOut().catch(() => undefined);
 
-  const admin = createSupabaseClient(url, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return json(503, "A exclusão de conta está temporariamente indisponível.");
+  }
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   if (deleteError) {
     return json(500, GENERIC_ERROR);
