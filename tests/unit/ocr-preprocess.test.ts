@@ -4,6 +4,11 @@ import {
   adjustContrast,
   threshold,
   denoise,
+  sharpen,
+  stretchContrast,
+  flattenIllumination,
+  invert,
+  meanLuminance,
   preprocessForThreshold,
   type PixelBuffer,
 } from "@/features/ocr/preprocess";
@@ -84,6 +89,111 @@ describe("denoise", () => {
     expect(result.width).toBe(5);
     expect(result.height).toBe(4);
     expect(result.data.length).toBe(buffer.data.length);
+  });
+});
+
+function horizontalTotalVariation(buffer: PixelBuffer): number {
+  let total = 0;
+  for (let y = 0; y < buffer.height; y += 1) {
+    for (let x = 0; x < buffer.width - 1; x += 1) {
+      const a = buffer.data[(y * buffer.width + x) * 4];
+      const b = buffer.data[(y * buffer.width + x + 1) * 4];
+      total += Math.abs(b - a);
+    }
+  }
+  return total;
+}
+
+function makeEdgeBuffer(width: number, height: number): PixelBuffer {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const value = x < width / 2 ? 80 : 180;
+      const i = (y * width + x) * 4;
+      data[i] = value;
+      data[i + 1] = value;
+      data[i + 2] = value;
+      data[i + 3] = 255;
+    }
+  }
+  return { width, height, data };
+}
+
+describe("sharpen", () => {
+  it("não altera a imagem quando amount é 0", () => {
+    const buffer = makeEdgeBuffer(4, 4);
+    const result = sharpen(buffer, 0);
+    expect(Array.from(result.data)).toEqual(Array.from(buffer.data));
+  });
+
+  it("aumenta o contraste nas bordas (realça a transição)", () => {
+    const buffer = makeEdgeBuffer(4, 4);
+    const result = sharpen(buffer, 1);
+    expect(horizontalTotalVariation(result)).toBeGreaterThan(horizontalTotalVariation(buffer));
+  });
+
+  it("mantém dimensões e o canal alpha", () => {
+    const buffer = makeEdgeBuffer(4, 4);
+    const result = sharpen(buffer, 1);
+    expect(result.width).toBe(4);
+    expect(result.height).toBe(4);
+    expect(result.data[3]).toBe(255);
+  });
+});
+
+describe("stretchContrast", () => {
+  it("leva o tom mais escuro a 0 e o mais claro a 255", () => {
+    const buffer = makeEdgeBuffer(4, 4);
+    const result = stretchContrast(buffer);
+    const values = new Set(Array.from(result.data).filter((_, i) => i % 4 === 0));
+    expect(values).toEqual(new Set([0, 255]));
+  });
+
+  it("não altera uma imagem uniforme", () => {
+    const buffer = makeSolidBuffer(4, 4, [120, 120, 120, 255]);
+    expect(Array.from(stretchContrast(buffer).data)).toEqual(Array.from(buffer.data));
+  });
+});
+
+describe("flattenIllumination", () => {
+  it("iguala o fundo sob um gradiente de luz (reflexo de um lado do visor)", () => {
+    const width = 40;
+    const height = 20;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const value = 90 + Math.round((x / (width - 1)) * 150); // 90 (sombra) → 240 (reflexo)
+        const i = (y * width + x) * 4;
+        data.set([value, value, value, 255], i);
+      }
+    }
+    const buffer: PixelBuffer = { width, height, data };
+    const result = flattenIllumination(buffer, 3);
+    const left = result.data[(10 * width + 10) * 4];
+    const right = result.data[(10 * width + 30) * 4];
+    expect(Math.abs(right - left)).toBeLessThan(20);
+    expect(Math.abs(data[(10 * width + 30) * 4] - data[(10 * width + 10) * 4])).toBeGreaterThan(60);
+  });
+
+  it("mantém um traço escuro mais escuro que o fundo ao redor", () => {
+    const buffer = makeSolidBuffer(21, 21, [220, 220, 220, 255]);
+    const center = (10 * 21 + 10) * 4;
+    buffer.data.set([40, 40, 40], center);
+    const result = flattenIllumination(buffer, 5);
+    expect(result.data[center]).toBeLessThan(result.data[0] / 2);
+  });
+});
+
+describe("invert", () => {
+  it("gera o negativo e preserva o alpha", () => {
+    const result = invert(makeSolidBuffer(1, 1, [0, 100, 255, 200]));
+    expect(Array.from(result.data)).toEqual([255, 155, 0, 200]);
+  });
+});
+
+describe("meanLuminance", () => {
+  it("retorna a luminância média", () => {
+    expect(meanLuminance(makeSolidBuffer(2, 2, [100, 100, 100, 255]))).toBeCloseTo(100);
   });
 });
 

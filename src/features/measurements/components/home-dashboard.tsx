@@ -180,7 +180,13 @@ function HomeSummary({ measurements, targetRange }: HomeSummaryProps) {
             </div>
           ) : null}
 
-          <GlucoseChartSection measurements={recent} targetRange={targetRange} />
+          <GlucoseChartSection
+            measurements={recent}
+            targetRange={targetRange}
+            chartType="line"
+            granularity="day"
+            distribution={distribution}
+          />
         </>
       )}
     </section>

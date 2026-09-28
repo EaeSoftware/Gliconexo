@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ExportAllDataButton } from "@/features/privacy/components/export-all-data-button";
+import { RevokeConsentButton } from "@/features/privacy/components/revoke-consent-button";
 import { DeleteAccountSection } from "@/features/privacy/components/delete-account-section";
-import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Privacidade" };
 
@@ -22,12 +21,7 @@ export default function PrivacidadeAppPage() {
         <h2 className="mb-2 font-semibold text-foreground">Exportar meus dados</h2>
         <p className="mb-3 text-sm text-foreground/70">
           Gera um arquivo com todas as suas medições e sua faixa pessoal
-          salvas neste dispositivo. Consentimentos ainda não são
-          registrados (aguardando a autenticação real, ver{" "}
-          <Link href="/privacidade" className="underline">
-            política de privacidade
-          </Link>
-          ).
+          salvas neste dispositivo.
         </p>
         <ExportAllDataButton />
       </section>
@@ -38,21 +32,10 @@ export default function PrivacidadeAppPage() {
           Você pode revogar o consentimento para tratamento de dados de
           saúde a qualquer momento.
         </p>
-        <Button type="button" variant="outline" disabled>
-          Revogar consentimento
-        </Button>
+        <RevokeConsentButton />
       </section>
 
       <DeleteAccountSection />
-
-      <p className="text-xs text-foreground/50">
-        Revogar consentimento será habilitado quando o registro de
-        consentimentos estiver conectado (ver{" "}
-        <Link href="/privacidade" className="underline">
-          política de privacidade
-        </Link>
-        ).
-      </p>
     </div>
   );
 }

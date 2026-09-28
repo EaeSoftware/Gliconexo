@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginSchema, type LoginInput } from "@/features/auth/schemas";
 import { createClient } from "@/lib/supabase/client";
+import { recordTermsConsent } from "@/lib/supabase/consent";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 
@@ -30,6 +31,11 @@ export function LoginForm() {
         setFormError("Não foi possível entrar. Confira seu e-mail e senha.");
         return;
       }
+
+      // Cobre contas criadas antes do registro de consentimento existir,
+      // ou cujo cadastro ficou pendente de confirmação de e-mail;
+      // idempotente, então repetir a cada login é seguro.
+      await recordTermsConsent(supabase);
 
       router.push("/app");
       router.refresh();

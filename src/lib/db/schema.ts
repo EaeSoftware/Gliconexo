@@ -49,8 +49,8 @@ class GlicoNexoDB extends Dexie {
   measurements!: EntityTable<StoredMeasurement, "id">;
   preferences!: EntityTable<StoredPreferences, "id">;
 
-  constructor() {
-    super("gliconexo");
+  constructor(name: string) {
+    super(name);
     this.version(1).stores({
       measurements: "id, measuredAt, updatedAt, deletedAt, context, source",
     });
@@ -62,6 +62,12 @@ class GlicoNexoDB extends Dexie {
 }
 
 let dbInstance: GlicoNexoDB | null = null;
+let activeUserId: string | null = null;
+
+/** Um banco IndexedDB por usuário: evita que dados de uma conta vazem para outra no mesmo dispositivo. */
+function dbNameFor(userId: string | null): string {
+  return userId ? `gliconexo-${userId}` : "gliconexo-anon";
+}
 
 /**
  * Dexie só pode ser instanciado no navegador (depende de IndexedDB).
@@ -69,18 +75,44 @@ let dbInstance: GlicoNexoDB | null = null;
  */
 export function getDb(): GlicoNexoDB {
   if (!dbInstance) {
-    dbInstance = new GlicoNexoDB();
+    dbInstance = new GlicoNexoDB(dbNameFor(activeUserId));
   }
   return dbInstance;
 }
 
 /**
- * Apaga todo o banco local (medições, fila e preferências) deste
- * navegador. Usado depois de excluir a conta, para que nenhum dado
- * privado permaneça no aparelho.
+ * Troca o "usuário ativo" do banco local. Fecha a instância aberta para
+ * que a próxima `getDb()` abra o banco IndexedDB correto (escopado por
+ * `userId`). Precisa ser chamada antes de qualquer leitura/escrita da
+ * sessão — ver `LocalDbUserSync`, que a chama durante o render (não em
+ * efeito) para evitar corrida com repositórios que leem dados em seus
+ * próprios efeitos assim que montam.
+ */
+export function setActiveUser(userId: string | null): void {
+  if (userId === activeUserId) return;
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
+  }
+  activeUserId = userId;
+}
+
+/** Apaga o IndexedDB do usuário atualmente ativo (CLAUDE.md seção 13: limpar dados locais após logout). */
+export async function clearActiveUserLocalData(): Promise<void> {
+  const name = dbNameFor(activeUserId);
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
+  }
+  await Dexie.delete(name);
+}
+
+/**
+ * Apaga o banco local do usuário ativo. Usado depois de excluir a conta,
+ * para que nenhum dado privado permaneça no aparelho. Alias de
+ * `clearActiveUserLocalData` mantido para compatibilidade com o fluxo de
+ * exclusão de conta.
  */
 export async function deleteLocalDatabase(): Promise<void> {
-  const db = getDb();
-  dbInstance = null;
-  await db.delete();
+  await clearActiveUserLocalData();
 }
