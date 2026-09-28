@@ -18,7 +18,7 @@
 // que exija invalidar o cache antigo. Documentado em
 // docs/architecture.md ("Service worker e cache").
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `gliconexo-static-${CACHE_VERSION}`;
 const SHELL_CACHE = `gliconexo-shell-${CACHE_VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, SHELL_CACHE];
