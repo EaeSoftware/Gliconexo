@@ -73,3 +73,14 @@ export function getDb(): GlicoNexoDB {
   }
   return dbInstance;
 }
+
+/**
+ * Apaga todo o banco local (medições, fila e preferências) deste
+ * navegador. Usado depois de excluir a conta, para que nenhum dado
+ * privado permaneça no aparelho.
+ */
+export async function deleteLocalDatabase(): Promise<void> {
+  const db = getDb();
+  dbInstance = null;
+  await db.delete();
+}

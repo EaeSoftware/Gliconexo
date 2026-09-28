@@ -83,11 +83,12 @@ export default function ConfiguracoesPage() {
           description="Revogar consentimento e excluir conta"
           href="/app/privacidade"
         />
-        <SettingsStaticRow
+        <SettingsLinkRow
           icon={Trash2}
           label="Excluir conta e dados"
-          description="Disponível quando a autenticação real estiver completa"
-          tone="muted"
+          description="Para contas com e-mail e senha"
+          tone="danger"
+          href="/app/privacidade#excluir-conta"
         />
       </SettingsGroup>
 
