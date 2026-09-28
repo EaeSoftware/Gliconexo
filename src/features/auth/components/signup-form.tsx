@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema, type SignupInput } from "@/features/auth/schemas";
 import { createClient } from "@/lib/supabase/client";
+import { recordTermsConsent } from "@/lib/supabase/consent";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import Link from "next/link";
@@ -22,7 +23,7 @@ export function SignupForm() {
     setFormError(null);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
       });
@@ -30,6 +31,14 @@ export function SignupForm() {
       if (error) {
         setFormError("Não foi possível criar sua conta. Tente novamente em instantes.");
         return;
+      }
+
+      // Se a confirmação de e-mail estiver desativada, `signUp` já retorna
+      // uma sessão e dá para registrar o aceite agora. Caso contrário, o
+      // aceite é registrado no primeiro login bem-sucedido (RLS exige um
+      // usuário autenticado para gravar em `consent_records`).
+      if (signUpData.session) {
+        await recordTermsConsent(supabase);
       }
 
       setSuccess(true);

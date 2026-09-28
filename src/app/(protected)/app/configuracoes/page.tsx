@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileText, Info, RefreshCw, Shield, Sparkles, Target, Trash2 } from "lucide-react";
+import { FileText, Info, RefreshCw, Shield, Sparkles, Target } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { InstallPwaButton } from "@/components/pwa/install-button";
 import { TargetRangeForm } from "@/features/preferences/components/target-range-form";
@@ -82,12 +82,6 @@ export default function ConfiguracoesPage() {
           label="Central de privacidade"
           description="Revogar consentimento e excluir conta"
           href="/app/privacidade"
-        />
-        <SettingsStaticRow
-          icon={Trash2}
-          label="Excluir conta e dados"
-          description="Disponível quando a autenticação real estiver completa"
-          tone="muted"
         />
       </SettingsGroup>
 

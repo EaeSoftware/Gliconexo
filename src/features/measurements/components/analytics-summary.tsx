@@ -6,7 +6,10 @@ import { getDb } from "@/lib/db/schema";
 import { getDashboardProgress } from "@/features/measurements/dashboard-progress";
 import { computeMeasurementStats, computeRangeDistribution } from "@/features/measurements/stats";
 import { filterMeasurements, type PeriodFilter } from "@/features/measurements/filter-measurements";
+import type { ChartGranularity } from "@/features/measurements/chart-data";
 import { GlucoseChartSection } from "@/features/measurements/components/glucose-chart-section";
+import { ChartTypeSwitcher, type ChartType } from "@/features/measurements/components/chart-type-switcher";
+import { GranularitySelect } from "@/features/measurements/components/granularity-select";
 import { ContextSeriesSection } from "@/features/measurements/components/context-series-section";
 import { DailyContextSection } from "@/features/measurements/components/daily-context-section";
 import { PeriodSelect } from "@/features/measurements/components/period-select";
@@ -18,6 +21,8 @@ import { LineChart, SearchX } from "lucide-react";
 
 export function AnalyticsSummary() {
   const [period, setPeriod] = useState<PeriodFilter>(30);
+  const [chartType, setChartType] = useState<ChartType>("line");
+  const [granularity, setGranularity] = useState<ChartGranularity>("day");
 
   const measurements = useLiveQuery(
     () => getDb().measurements.filter((m) => !m.deletedAt).toArray(),
@@ -110,7 +115,20 @@ export function AnalyticsSummary() {
             </p>
           )}
 
-          <GlucoseChartSection measurements={filtered} targetRange={targetRange} />
+          <div className="flex flex-wrap items-center gap-3">
+            <ChartTypeSwitcher value={chartType} onChange={setChartType} pieDisabled={!distribution} />
+            {chartType !== "pie" ? (
+              <GranularitySelect value={granularity} onChange={setGranularity} />
+            ) : null}
+          </div>
+
+          <GlucoseChartSection
+            measurements={filtered}
+            targetRange={targetRange}
+            chartType={chartType}
+            granularity={granularity}
+            distribution={distribution}
+          />
           <ContextSeriesSection measurements={filtered} />
           <DailyContextSection measurements={filtered} />
 

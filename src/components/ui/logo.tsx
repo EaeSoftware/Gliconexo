@@ -25,7 +25,7 @@ export function Logo({ size = "md", className }: LogoProps) {
       />
       <span className={`font-extrabold tracking-tight ${text}`}>
         <span className="text-foreground">Glico</span>
-        <span className="text-brand-blue">Nexo</span>
+        <span className="text-brand-teal">Nexo</span>
       </span>
     </span>
   );

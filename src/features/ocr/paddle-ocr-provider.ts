@@ -1,5 +1,5 @@
 import type { OcrProvider, OcrResult } from "@/features/ocr/types";
-import { parseNumericCandidates, pickBestCandidate } from "@/features/ocr/parse-candidates";
+import { joinSplitDigitGroups, parseNumericCandidates, pickBestCandidate } from "@/features/ocr/parse-candidates";
 
 const ENGINE_VERSION = "ppu-paddle-ocr@6.4.3+PP-OCRv6-tiny";
 
@@ -14,10 +14,12 @@ type PaddleTextBlock = {
   confidence: number;
 };
 
-/** Uma leitura numérica candidata dentro de um bloco de texto, com a área do bloco para a heurística de "maior é o principal". */
+/** Uma leitura numérica candidata dentro de um bloco de texto, com o tamanho do bloco para a heurística de "maior é o principal". */
 type NumericBlockCandidate = {
   value: number;
   confidence: number;
+  /** Altura do bloco — aproxima o tamanho da fonte, o melhor sinal de "número principal". */
+  height: number;
   area: number;
   /** Outros números encontrados no mesmo bloco (ex.: "1:54 288" tem "1", "54" e "288"), descartados em favor de `value`. */
   otherValuesInBlock: number[];
@@ -26,20 +28,23 @@ type NumericBlockCandidate = {
 /**
  * Extrai, de cada bloco de texto reconhecido, o número principal (mesma
  * heurística `pickBestCandidate` usada pelo Tesseract: mais dígitos
- * vence) junto da área do bloco — usada depois para escolher entre
+ * vence) junto do tamanho do bloco — usado depois para escolher entre
  * blocos o valor principal do visor (relógio, contador de memória e
  * "mg/dL" formam blocos bem menores que o número grande central).
+ * Dígitos separados só por espaço ("1 03") são juntados antes, porque o
+ * vão entre dígitos de 7 segmentos engana o OCR.
  * Função pura, testável sem carregar o motor de OCR.
  */
 export function extractNumericBlocks(blocks: PaddleTextBlock[]): NumericBlockCandidate[] {
   const out: NumericBlockCandidate[] = [];
   for (const block of blocks) {
     const numbers = parseNumericCandidates(block.text);
-    const value = pickBestCandidate(numbers);
+    const value = joinSplitDigitGroups(block.text) ?? pickBestCandidate(numbers);
     if (value === null) continue;
     out.push({
       value,
       confidence: block.confidence,
+      height: block.box.height,
       area: block.box.width * block.box.height,
       otherValuesInBlock: numbers.filter((n) => n !== value),
     });
@@ -48,17 +53,18 @@ export function extractNumericBlocks(blocks: PaddleTextBlock[]): NumericBlockCan
 }
 
 /**
- * Escolhe o bloco cujo número é a leitura principal do visor: o de
- * maior área (o valor grande central sempre domina visualmente
- * relógio/contador/unidade). Retorna `null` se nenhum bloco tiver um
- * número válido.
+ * Escolhe o bloco cujo número é a leitura principal do visor: o mais
+ * alto (maior fonte), com a área como desempate. Altura é melhor que
+ * área porque o relógio ("12:45") é largo e, num recorte folgado, pode
+ * ter mais área que o valor grande central, mas nunca é mais alto que
+ * ele. Retorna `null` se nenhum bloco tiver um número válido.
  */
 export function pickMainReading(
   blocks: NumericBlockCandidate[],
 ): { value: number; confidence: number; candidates: number[] } | null {
   if (blocks.length === 0) return null;
 
-  const sorted = [...blocks].sort((a, b) => b.area - a.area);
+  const sorted = [...blocks].sort((a, b) => b.height - a.height || b.area - a.area);
   const best = sorted[0];
   const otherValues = sorted
     .slice(1)

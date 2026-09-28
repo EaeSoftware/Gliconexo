@@ -5,6 +5,8 @@ import { CameraPreview } from "@/features/ocr/components/camera-preview";
 import { FilePickerButton } from "@/features/ocr/components/file-picker-button";
 import { ImageEditor } from "@/features/ocr/components/image-editor";
 import { PaddleOcrProvider, type PaddleOcrProgress } from "@/features/ocr/paddle-ocr-provider";
+import { runOcrPipelineWithVariants } from "@/features/ocr/run-ocr-pipeline";
+import { PADDLE_PREPROCESS_VARIANTS } from "@/features/ocr/paddle-preprocess-variants";
 import type { OcrResult } from "@/features/ocr/types";
 import { ManualEntryForm } from "@/features/measurements/components/manual-entry-form";
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
@@ -29,11 +31,12 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   const [ocrProgressText, setOcrProgressText] = useState<string>("Preparando...");
 
   const providerRef = useRef<PaddleOcrProvider | null>(null);
+  const attemptRef = useRef<{ attempt: number; total: number } | null>(null);
 
   function getProvider() {
     if (!providerRef.current) {
       providerRef.current = new PaddleOcrProvider((progress) => {
-        setOcrProgressText(describeProgress(progress));
+        setOcrProgressText(describeProgress(progress, attemptRef.current));
       });
     }
     return providerRef.current;
@@ -82,11 +85,20 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
     setOcrProgressText("Preparando reconhecimento...");
 
     try {
-      const result = await getProvider().recognize(croppedBlob);
+      const result = await runOcrPipelineWithVariants(
+        croppedBlob,
+        getProvider(),
+        PADDLE_PREPROCESS_VARIANTS,
+        (attempt, total) => {
+          attemptRef.current = { attempt, total };
+          setOcrProgressText(describeProgress({ status: "recognizing" }, attemptRef.current));
+        },
+      );
       setOcrResult(result);
     } catch {
       setOcrResult({ value: null, confidence: 0, candidates: [], engineVersion: "" });
     } finally {
+      attemptRef.current = null;
       setStep("confirm");
     }
   }
@@ -228,6 +240,13 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   return null;
 }
 
-function describeProgress(progress: PaddleOcrProgress): string {
-  return progress.status === "loading model" ? "Carregando mecanismo de leitura..." : "Reconhecendo o valor...";
+function describeProgress(
+  progress: PaddleOcrProgress,
+  attempt: { attempt: number; total: number } | null,
+): string {
+  if (progress.status === "loading model") return "Carregando mecanismo de leitura...";
+  if (attempt && attempt.total > 1) {
+    return `Reconhecendo o valor... (tentativa ${attempt.attempt} de ${attempt.total})`;
+  }
+  return "Reconhecendo o valor...";
 }

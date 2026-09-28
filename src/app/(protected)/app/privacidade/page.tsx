@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ExportAllDataButton } from "@/features/privacy/components/export-all-data-button";
-import { Button } from "@/components/ui/button";
+import { RevokeConsentButton } from "@/features/privacy/components/revoke-consent-button";
+import { DeleteAccountButton } from "@/features/privacy/components/delete-account-button";
 
 export const metadata: Metadata = { title: "Privacidade" };
 
@@ -21,12 +21,7 @@ export default function PrivacidadeAppPage() {
         <h2 className="mb-2 font-semibold text-foreground">Exportar meus dados</h2>
         <p className="mb-3 text-sm text-foreground/70">
           Gera um arquivo com todas as suas medições e sua faixa pessoal
-          salvas neste dispositivo. Consentimentos ainda não são
-          registrados (aguardando a autenticação real, ver{" "}
-          <Link href="/privacidade" className="underline">
-            política de privacidade
-          </Link>
-          ).
+          salvas neste dispositivo.
         </p>
         <ExportAllDataButton />
       </section>
@@ -37,9 +32,7 @@ export default function PrivacidadeAppPage() {
           Você pode revogar o consentimento para tratamento de dados de
           saúde a qualquer momento.
         </p>
-        <Button type="button" variant="outline" disabled>
-          Revogar consentimento
-        </Button>
+        <RevokeConsentButton />
       </section>
 
       <section className="rounded-2xl border border-status-below/40 bg-status-below/5 p-5">
@@ -48,20 +41,8 @@ export default function PrivacidadeAppPage() {
           Remove permanentemente sua conta e os dados vinculados, conforme a
           política de retenção documentada.
         </p>
-        <Button type="button" variant="outline" disabled>
-          Excluir conta
-        </Button>
+        <DeleteAccountButton />
       </section>
-
-      <p className="text-xs text-foreground/50">
-        Revogar consentimento e excluir conta serão habilitados quando a
-        autenticação e a função de exclusão de conta forem implementadas
-        (ver{" "}
-        <Link href="/privacidade" className="underline">
-          política de privacidade
-        </Link>
-        ).
-      </p>
     </div>
   );
 }
