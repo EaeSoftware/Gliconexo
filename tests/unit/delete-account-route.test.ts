@@ -7,6 +7,8 @@ const serverSignOut = vi.fn().mockResolvedValue({});
 const signInWithPassword = vi.fn();
 const deleteUser = vi.fn();
 
+vi.mock("server-only", () => ({}));
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ auth: { getUser, signOut: serverSignOut } }),
 }));
