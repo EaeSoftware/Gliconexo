@@ -2,19 +2,26 @@
 
 ## Status
 
-**Nenhuma migration foi criada ainda.** Este documento registra o modelo
-de dados planejado (`CLAUDE.md`, seções 11 e 12) para orientar a Fase 2
-(banco e autenticação), que ainda não foi executada nesta entrega.
+O projeto Supabase do GlicoNexo é o `nbgvlydunappunuxlbgq` (o mesmo de
+`NEXT_PUBLIC_SUPABASE_URL` e do MCP em `.mcp.json`). Os projetos de outras
+contas (`Life Book - APP`, `linkfit-dev`, `eae-os`) **não devem ser usados**.
 
-Nenhum projeto Supabase real está conectado a este repositório.
-**Decisão registrada em 2026-08-28:** o responsável pelo produto vai usar
-uma conta Supabase e Vercel própria (ainda a ser criada/informada) — os
-projetos Supabase já existentes na conta usada por este agente
-(`Life Book - APP`, `eae-os`) **não devem ser usados** para o GlicoNexo.
-A Fase 2 fica bloqueada até essa conta/projeto ser informado. Antes de
-criar migrations, também é necessário confirmar que nenhum dado real
-do TCC será usado como seed (apenas dados sintéticos e claramente
-fictícios).
+As migrations em `supabase/migrations/` usam os mesmos números de versão
+registrados no banco (`supabase_migrations.schema_migrations`):
+
+| Versão | Migration |
+|---|---|
+| `20260828191358` | `helpers` (`set_updated_at`) |
+| `20260828191606` | `profiles` + RLS |
+| `20260828191623` | `user_preferences` + RLS |
+| `20260828192734` | `glucose_measurements` + RLS e índices |
+| `20260828192827` | `consent_records` + RLS |
+| `20260828192841` | `handle_new_user` (cria perfil e preferências no cadastro) |
+| `20261015021929` | `consent_records_upsert` (default em `accepted_at` e `unique (user_id, consent_type, document_version)`) |
+
+Ao criar uma migration nova, aplicar no banco e manter o arquivo local com
+a versão que o banco registrou. Seeds só com dados sintéticos e claramente
+fictícios, nunca dados reais do TCC.
 
 ## Modelo de dados planejado
 
@@ -81,10 +88,14 @@ id uuid primary key
 user_id uuid not null references auth.users(id) on delete cascade
 consent_type text not null
 document_version text not null
-accepted_at timestamptz not null
+accepted_at timestamptz not null default now()
 revoked_at timestamptz null
 created_at timestamptz not null default now()
+unique (user_id, consent_type, document_version)
 ```
+
+A restrição única permite que `recordTermsConsent` faça um upsert
+idempotente a cada login sem duplicar nem sobrescrever o aceite.
 
 Guardar somente informações necessárias para demonstrar o aceite. Nunca
 registrar valor glicêmico em logs de consentimento.
@@ -120,11 +131,33 @@ cliente):
 
 ## Banco local (IndexedDB)
 
-Planejado para a Fase 3, substituindo o SQLite do TCC original por
-IndexedDB (via Dexie), com stores `measurements`, `outbox`,
-`sync_metadata`, `cached_profile`, `cached_preferences`. Nunca usar
+IndexedDB (via Dexie) no lugar do SQLite do TCC original, um banco por
+usuário (`gliconexo-<userId>`, ver `src/lib/db/schema.ts`). Nunca usar
 `localStorage` para medições — apenas para preferências não sensíveis
 (hoje, apenas a preferência de tema em `THEME_STORAGE_KEY`).
+
+Versões do schema Dexie (sempre aditivas):
+
+| Versão | Tabelas | Observação |
+| --- | --- | --- |
+| 1 | `measurements` | `id, measuredAt, updatedAt, deletedAt, context, source` |
+| 2 | `preferences` | registro único (`id = "local"`) com a faixa pessoal |
+| 3 | `ocrImages` | chave `measurementId`; guarda `{ measurementId, blob, mimeType, createdAt }` |
+
+`ocrImages` (08/10/2026) guarda o recorte do visor que o usuário
+confirmou, **só se ele deixou a opção "Guardar foto do visor neste
+aparelho" ligada**. Fica fora de `measurements` para não pesar a leitura
+do histórico e para não entrar nos exports CSV/JSON. A linha é apagada
+quando a medição é excluída ou quando o usuário remove a foto, e some com
+o banco inteiro no logout concluído e na exclusão de conta. **Não é
+sincronizada** e não tem equivalente no PostgreSQL.
+
+Planejado para a Fase 4 (ainda não existe): stores `outbox`,
+`sync_metadata`, `cached_profile`, `cached_preferences`.
+
+Sobre `consent_records.revoked_at`: a coluna existe, mas desde 08/10/2026
+a interface não oferece mais o botão de revogar (ver
+`docs/privacy-and-security.md`).
 
 ## Nota sobre `U.C` e `U.D`
 

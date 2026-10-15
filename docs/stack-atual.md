@@ -22,7 +22,7 @@
 
 ## Backend / nuvem
 - **@supabase/supabase-js** e **@supabase/ssr** (Auth + Postgres)
-- Não há pasta `supabase/migrations` no repo ainda — nenhuma migration versionada foi encontrada
+- `supabase/migrations/` tem as 7 migrations aplicadas no projeto `nbgvlydunappunuxlbgq`, com as mesmas versões do banco (ver `docs/database.md`)
 
 ## OCR / visão computacional (a parte mais "não-padrão" da stack)
 - **ppu-paddle-ocr** — motor OCR primário (PaddleOCR via WASM), adotado recentemente no lugar de outro engine (commit "Troca o motor primario de OCR para PaddleOCR")
@@ -63,4 +63,4 @@ src/
 - TanStack Query
 - Serwist (ou equivalente) para o service worker — hoje é `sw.js` manual
 - Playwright (testes E2E)
-- Migrations do Supabase (pasta `supabase/migrations` inexistente)
+- Migrations do Supabase para `profiles`, `user_preferences` e `glucose_measurements` (só `consent_records` existe aqui)

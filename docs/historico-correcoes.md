@@ -69,11 +69,20 @@
 - `src/middleware.ts` e `src/lib/supabase/middleware.ts` renovam a sessão.
   `src/app/(protected)/layout.tsx` chama `auth.getUser()` e redireciona para `/entrar`
   quando não há usuário.
-- `POST /api/account/delete` identifica o usuário só pela sessão, sem aceitar `user_id`
+- `POST /api/account/delete` (hoje substituída por `POST /api/conta/excluir`, depois do merge `e3e4538`) identifica o usuário só pela sessão, sem aceitar `user_id`
   do cliente. Ele usa `src/lib/supabase/admin.ts`, marcado como `server-only`, e sempre
   devolve respostas genéricas.
-- A migration `supabase/migrations/20260909000000_consent_records.sql` cria os registros
-  de consentimento com `on delete cascade`.
+- Os registros de consentimento (`consent_records`) usam `on delete cascade`.
+- Em 15/10/2026 foi constatado que nenhum aceite de termos tinha sido gravado
+  (0 registros para 44 usuários): o upsert de `recordTermsConsent` usava
+  `on conflict (user_id, consent_type, document_version)`, mas o banco não tinha
+  essa restrição única nem default em `accepted_at`, e o erro era ignorado.
+  A migration local `20260909000000_consent_records.sql` nunca tinha sido aplicada
+  (e falharia, porque recriava policies existentes). Ela foi substituída por
+  `20261015021929_consent_records_upsert.sql`, aplicada no banco, e as 6 migrations
+  base (antes só na branch do commit `a44a3d5`) voltaram ao repositório com as
+  versões do banco. `recordTermsConsent` agora verifica o erro e retorna `false`
+  sem impedir o login.
 
 ## 3. Evolução da leitura de imagem (OCR)
 

@@ -17,6 +17,27 @@ A especificação completa do produto está em [`CLAUDE.md`](./CLAUDE.md).
 
 ## Status atual do desenvolvimento
 
+> **Atualização de 08/10/2026.** Esta seção foi escrita em fases anteriores e
+> **algumas partes estão desatualizadas** (por exemplo, o motor de OCR hoje é o
+> PaddleOCR, não o Tesseract.js, e o PDF e a exclusão de conta já existem). Para o
+> estado real, veja [`docs/stack-atual.md`](./docs/stack-atual.md),
+> [`docs/historico-correcoes.md`](./docs/historico-correcoes.md) e o
+> [`docs/diario-de-desenvolvimento.md`](./docs/diario-de-desenvolvimento.md), que
+> conta o que foi usado, as dificuldades e o que não deu certo.
+>
+> Novidades desta data:
+>
+> - **Gráfico por hora do dia** em Análises e no PDF (média, mínimo e máximo de cada
+>   hora; horas sem medição ficam sem ponto).
+> - **Foto do visor guardada no aparelho (opcional):** no registro por câmera, a opção
+>   "Guardar foto do visor neste aparelho" (ligada por padrão) grava o recorte
+>   confirmado no IndexedDB. A foto aparece no detalhe da medição, pode ser removida,
+>   some quando a medição é excluída e pode ser incluída no PDF. Nunca vai a servidor
+>   nem entra no CSV/JSON. Detalhes e pendências jurídicas em
+>   [`docs/privacy-and-security.md`](./docs/privacy-and-security.md).
+> - **Botão "Revogar consentimento" removido** da central de privacidade. A pendência
+>   jurídica está registrada no mesmo arquivo.
+
 Esta entrega cobre a **Fase 0 (auditoria)**, a **Fase 1 (base do
 projeto)**, boa parte da **Fase 3 (registro manual e histórico)**, a
 **Fase 5 (câmera e OCR)**, a **Fase 6 completa (dashboard e gráficos)**,
@@ -28,7 +49,7 @@ descrito em `CLAUDE.md`, seção 21:
 - ✅ Identidade visual GlicoNexo (logo, ícones PWA, paleta, tema claro/escuro/sistema).
 - ✅ Rotas públicas: página inicial, entrar, cadastro, recuperar senha, privacidade, termos.
 - ✅ Onboarding (4 passos) e casca do app protegido (`/app/*`) com navegação inferior (mobile) e sidebar (desktop).
-- ✅ Cliente Supabase (browser e servidor) preparado para autenticação — **ainda não conectado a um projeto Supabase real** (pendência de produto, ver abaixo).
+- ✅ Cliente Supabase (browser e servidor), telas de entrar/cadastro/recuperar senha, registro do aceite dos termos (`consent_records`) e rota de exclusão de conta (`/api/conta/excluir`, server-side). Tudo isso depende de um projeto Supabase configurado em `.env.local`; as tabelas de perfil, preferências e medições na nuvem **ainda não têm migration neste repositório** (ver abaixo).
 - ✅ Manifest da PWA, ícones e botão de instalação.
 - ✅ **Persistência local real (IndexedDB via Dexie):** registrar, editar,
   excluir (com "desfazer") e listar/filtrar medições já funciona de
@@ -59,14 +80,15 @@ descrito em `CLAUDE.md`, seção 21:
   quando disponível (com fallback para download comum) e nunca
   `window.open` nem elementos fixos que possam cobrir a navegação —
   ver "Exportação e compartilhamento no mobile" em `docs/telas.md`.
-- ✅ **Captura por câmera e OCR (Tesseract.js)**: fotografar o visor do
+- ✅ **Captura por câmera e OCR (PaddleOCR)**: fotografar o visor do
   glicosímetro (ou escolher uma imagem existente, com fallback via
   `<input capture="environment">` quando `getUserMedia` não está
   disponível), recortar e girar a foto, rodar o reconhecimento de
-  dígitos inteiramente no navegador (testando vários níveis de limiar
-  de binarização) e exigir confirmação/edição do valor antes de
-  salvar — a foto nunca é enviada a um servidor nem persistida, só
-  existe como URL temporária revogada ao final. Uma falha de OCR nunca
+  dígitos inteiramente no navegador (PaddleOCR via `ppu-paddle-ocr` e
+  `onnxruntime-web`, com variantes de pré-processamento) e exigir
+  confirmação/edição do valor antes de salvar. A foto nunca é enviada a
+  um servidor; ela só é guardada, neste aparelho, se o usuário mantiver
+  a opção "Guardar foto do visor neste aparelho". Uma falha de OCR nunca
   bloqueia a digitação manual (`src/features/ocr/`) — ver "Câmera e
   OCR e conectividade" em `docs/telas.md`.
 - ✅ **Service worker real e modo offline** (`public/sw.js`, escrito à
@@ -84,7 +106,7 @@ descrito em `CLAUDE.md`, seção 21:
   geração de CSV, os repositórios IndexedDB (com `fake-indexeddb`), o
   parser de candidatos numéricos do OCR, o pipeline de
   pré-processamento de imagem e a preparação dos dados dos gráficos por
-  contexto — 96 testes, todos passando. O service worker e os gráficos
+  contexto — 238 testes em 32 arquivos, todos passando em 09/10/2026 com `npm test`. O service worker e os gráficos
   Recharts foram verificados manualmente com Playwright (sem testes
   unitários para eles, por não haver como emular a API real de Service
   Worker em `jsdom`, e por serem visuais) — ver `docs/testing.md`.
@@ -98,8 +120,9 @@ descrito em `CLAUDE.md`, seção 21:
 - Fila de sincronização offline↔nuvem (Fase 4) — por isso todo registro
   aparece com o selo "Pendente" no histórico, e os dados não saem do
   dispositivo atual.
-- Geração de PDF e exclusão de conta (o resto da Fase 7 — CSV e JSON já
-  existem, ver acima). Exclusão de conta depende da autenticação real.
+- O resto da Fase 7: o PDF e a exclusão de conta já existem (veja a atualização
+  acima); faltam a revisão jurídica dos textos e a decisão sobre como oferecer a
+  revogação de consentimento.
 - Content Security Policy completa e testes cross-browser em dispositivo
   físico (o resto da Fase 8 — service worker e headers básicos já
   existem, ver acima).
@@ -161,8 +184,10 @@ projeto for criado (Fase 2):
 
 3. `SUPABASE_SERVICE_ROLE_KEY` nunca deve ser exposta ao navegador — use
    apenas em código server-side ou em Edge Functions.
-4. Migrations versionadas viverão em `supabase/migrations/` (a criar na
-   Fase 2, junto com as políticas de Row Level Security).
+4. As migrations versionadas (tabelas, RLS e gatilhos) ficam em
+   `supabase/migrations/`, com as mesmas versões registradas no banco.
+   Num projeto Supabase novo, aplique-as em ordem (`supabase db push` ou
+   SQL Editor). Detalhes em `docs/database.md`.
 
 ## Testar como PWA e modo offline
 
@@ -208,7 +233,9 @@ src/
   features/
     auth/                schemas e formulários de autenticação
     measurements/       schemas, componentes, filtros/estatísticas puras (testados)
-    ocr/                  câmera, recorte, pré-processamento e OcrProvider (Tesseract.js)
+    ocr/                  câmera, recorte, pré-processamento e OcrProvider (PaddleOCR)
+    reports/              PDF (com gráficos e fotos do visor) e CSV
+    privacy/              exportar tudo e excluir conta
     onboarding/           conteúdo dos 4 passos
     navigation/         itens do menu
   lib/
@@ -223,6 +250,8 @@ tests/
   unit/                 testes Vitest
 docs/
   architecture.md, database.md, privacy-and-security.md, testing.md
+  telas.md, stack-atual.md, historico-correcoes.md
+  diario-de-desenvolvimento.md   o que usei, dificuldades e o que não deu certo
 ```
 
 ## Sobre a logo
@@ -237,13 +266,14 @@ para garantir fidelidade total à marca.
 ## Limitações e pendências conhecidas
 
 - **Pendência de decisão do produto:** conta Supabase/Vercel dedicada ao
-  GlicoNexo ainda não foi criada/informada — ver aviso em "Configurar o
-  Supabase" acima. Nenhuma autenticação real está ativa: os formulários
-  de entrar/cadastro chamam o SDK do Supabase, mas falharão graciosamente
-  até haver um projeto configurado.
-- Medições já são persistidas de verdade, mas **só neste dispositivo**:
-  não há sincronização com nuvem, escopo por usuário nem limpeza no
-  logout (não existe logout real ainda).
+  GlicoNexo — ver aviso em "Configurar o Supabase" acima. Sem um projeto
+  configurado em `.env.local`, os formulários de entrar/cadastro falham de
+  forma controlada.
+- Medições já são persistidas de verdade, mas **só neste dispositivo**
+  (IndexedDB, uma base por usuário): não há sincronização com a nuvem.
+  A limpeza dos dados locais acontece na exclusão de conta.
+- As **fotos do visor** guardadas ficam só no IndexedDB do aparelho e,
+  como as medições, não são sincronizadas.
 - O service worker cobre o shell público e os assets estáticos, mas uma
   primeira visita **totalmente** offline (nunca abriu o app neste
   dispositivo antes) não tem nada em cache para mostrar — limitação
