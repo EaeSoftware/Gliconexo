@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMeasurementTableRows,
+  buildPdfPhotoEntries,
   buildReportSummaryRows,
+  MAX_PDF_PHOTOS,
   measurementTableHeaders,
   periodLabel,
 } from "@/features/reports/pdf";
@@ -136,5 +138,159 @@ describe("buildMeasurementTableRows", () => {
     expect(row).toContain("Jejum");
     expect(row).toContain("Antes da refeição");
     expect(row).toContain("Câmera (OCR)");
+  });
+});
+
+describe("buildPdfPhotoEntries", () => {
+  const photos = (...ids: string[]) => new Map(ids.map((id) => [id, `data:image/jpeg;base64,${id}`]));
+
+  it("inclui só medições que têm foto, da mais antiga para a mais recente", () => {
+    const old = makeMeasurement({ id: "a", measuredAt: "2026-08-20T08:00:00.000Z" });
+    const withoutPhoto = makeMeasurement({ id: "b", measuredAt: "2026-08-22T08:00:00.000Z" });
+    const recent = makeMeasurement({ id: "c", measuredAt: "2026-08-27T08:00:00.000Z" });
+
+    const { photos: entries, omitted } = buildPdfPhotoEntries(
+      [recent, withoutPhoto, old],
+      photos("a", "c"),
+    );
+
+    expect(entries.map((entry) => entry.dataUrl)).toEqual([
+      "data:image/jpeg;base64,a",
+      "data:image/jpeg;base64,c",
+    ]);
+    expect(omitted).toBe(0);
+  });
+
+  it("legenda traz valor e a confiança do OCR quando existe", () => {
+    const measurement = makeMeasurement({
+      id: "a",
+      valueMgDl: 103,
+      source: "ocr",
+      ocrConfidence: 0.9,
+    });
+    const low = makeMeasurement({ id: "b", valueMgDl: 99, source: "ocr", ocrConfidence: 0.5 });
+
+    const { photos: entries } = buildPdfPhotoEntries([measurement, low], photos("a", "b"));
+
+    expect(entries[0].caption).toContain("103 mg/dL");
+    expect(entries[0].caption).toContain("confiança alta");
+    expect(entries[1].caption).toContain("confiança baixa");
+  });
+
+  it("não inventa confiança para medição manual", () => {
+    const manual = makeMeasurement({ id: "a", source: "manual" });
+
+    const { photos: entries } = buildPdfPhotoEntries([manual], photos("a"));
+
+    expect(entries[0].caption).not.toContain("confiança");
+  });
+
+  it("respeita o teto de fotos e informa quantas ficaram de fora", () => {
+    const many = Array.from({ length: MAX_PDF_PHOTOS + 5 }, (_, index) =>
+      makeMeasurement({
+        id: `m${index}`,
+        measuredAt: new Date(Date.UTC(2026, 7, 1, 8, index)).toISOString(),
+      }),
+    );
+
+    const { photos: entries, omitted } = buildPdfPhotoEntries(
+      many,
+      photos(...many.map((measurement) => measurement.id)),
+    );
+
+    expect(entries).toHaveLength(MAX_PDF_PHOTOS);
+    expect(omitted).toBe(5);
+  });
+
+  it("devolve vazio quando nenhuma medição tem foto", () => {
+    expect(buildPdfPhotoEntries([makeMeasurement({ id: "a" })], new Map())).toEqual({
+      photos: [],
+      omitted: 0,
+    });
+  });
+});
+
+describe("buildMeasurementsPdf com fotos e gráfico por hora", () => {
+  async function pdfText(blob: Blob): Promise<string> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsText(blob, "latin1");
+    });
+  }
+
+  async function makeImages() {
+    const { createCanvas } = await import("canvas");
+    const jpeg = createCanvas(160, 80);
+    jpeg.getContext("2d").fillRect(0, 0, 160, 80);
+    const png = createCanvas(80, 32);
+    png.getContext("2d").fillRect(0, 0, 80, 32);
+    return {
+      jpeg: jpeg.toDataURL("image/jpeg"),
+      png: png.toDataURL("image/png"),
+    };
+  }
+
+  const stats = (measurements: GlucoseMeasurement[]) => ({
+    stats: computeMeasurementStats(measurements),
+    distribution: null,
+  });
+
+  it("gera o PDF com as fotos e o gráfico por hora sem quebrar", async () => {
+    const { buildMeasurementsPdf } = await import("@/features/reports/pdf");
+    const { jpeg, png } = await makeImages();
+    const measurements = Array.from({ length: 8 }, (_, index) =>
+      makeMeasurement({
+        id: `m${index}`,
+        source: "ocr",
+        ocrConfidence: 0.9,
+        measuredAt: new Date(Date.UTC(2026, 7, 1 + index, 11)).toISOString(),
+      }),
+    );
+    const { photos, omitted } = buildPdfPhotoEntries(
+      measurements,
+      new Map(measurements.map((measurement) => [measurement.id, jpeg])),
+    );
+
+    const blob = await buildMeasurementsPdf(measurements, stats(measurements), {
+      includeNotes: false,
+      period: 30,
+      targetRange: null,
+      chartImageDataUrl: png,
+      hourlyChartImageDataUrl: png,
+      photos,
+      omittedPhotos: omitted,
+    });
+
+    expect(blob.size).toBeGreaterThan(1000);
+    expect(await pdfText(blob)).toMatch(/^%PDF-/);
+  });
+
+  it("o PDF com fotos é maior que o mesmo PDF sem fotos", async () => {
+    const { buildMeasurementsPdf } = await import("@/features/reports/pdf");
+    const { jpeg } = await makeImages();
+    const measurements = [makeMeasurement({ id: "a", source: "ocr", ocrConfidence: 0.9 })];
+    const base = { includeNotes: false, period: 30 as const, targetRange: null, chartImageDataUrl: null };
+
+    const without = await buildMeasurementsPdf(measurements, stats(measurements), base);
+    const withPhoto = await buildMeasurementsPdf(measurements, stats(measurements), {
+      ...base,
+      photos: buildPdfPhotoEntries(measurements, new Map([["a", jpeg]])).photos,
+    });
+
+    expect(withPhoto.size).toBeGreaterThan(without.size);
+  });
+
+  it("continua gerando o PDF sem tabela (nenhuma medição) e sem imagens", async () => {
+    const { buildMeasurementsPdf } = await import("@/features/reports/pdf");
+
+    const blob = await buildMeasurementsPdf([], stats([]), {
+      includeNotes: false,
+      period: 7,
+      targetRange: null,
+      chartImageDataUrl: null,
+    });
+
+    expect(await pdfText(blob)).toMatch(/^%PDF-/);
   });
 });

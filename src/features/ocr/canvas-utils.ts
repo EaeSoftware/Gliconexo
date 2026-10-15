@@ -18,6 +18,37 @@ function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
+/**
+ * Reduz um blob de imagem para caber em `maxWidth` (sem ampliar) e o
+ * regrava como JPEG com `quality`. Usado antes de guardar a foto do visor
+ * no aparelho e de embuti-la no PDF, para manter o armazenamento pequeno.
+ */
+export async function downscaleImageBlob(blob: Blob, maxWidth = 640, quality = 0.8): Promise<Blob> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await loadImage(url);
+    const scale = Math.min(1, maxWidth / img.naturalWidth);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas indisponível.");
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => (result ? resolve(result) : reject(new Error("Falha ao gerar a imagem."))),
+        "image/jpeg",
+        quality,
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** Gira a imagem em `degrees` (múltiplo de 90) e devolve um novo blob JPEG. */
 export async function rotateImageUrl(sourceUrl: string, degrees: 90 | -90): Promise<Blob> {
   const img = await loadImage(sourceUrl);

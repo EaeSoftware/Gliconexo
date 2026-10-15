@@ -27,25 +27,24 @@ inicial, no onboarding e nas telas do app.
 - Formulário de recuperação de senha sempre mostra uma mensagem genérica,
   para não confirmar se um e-mail existe na base.
 - **Câmera e OCR**: a foto é processada inteiramente no navegador
-  (leitor de 7 segmentos via OpenCV.js local, com fallback Tesseract.js
-  local) e **nunca é enviada a nenhum servidor** nem persistida — existe
-  só como `Blob`/object URL/`cv.Mat` em memória enquanto o usuário está
-  na tela de captura, revogado/liberado ao salvar, cancelar ou tentar
-  novamente (`src/features/ocr/components/camera-capture-flow.tsx`). A
+  (PaddleOCR via `onnxruntime-web`) e **nunca é enviada a nenhum
+  servidor**. Enquanto o usuário está na tela de captura ela existe só
+  como `Blob`/object URL em memória, revogada ao salvar, cancelar ou
+  tentar novamente (`src/features/ocr/components/camera-capture-flow.tsx`).
+  **Exceção opcional, decidida em 08/10/2026:** ao confirmar uma leitura
+  por câmera, o usuário pode deixar ligada a opção "Guardar foto do visor
+  neste aparelho" (ver "Fotos do visor guardadas no aparelho" abaixo). A
   permissão da câmera só é solicitada quando o usuário toca em
   "Fotografar", nunca antes. Nenhum resultado intermediário é "chutado":
   se a confiança for insuficiente, o leitor retorna sem valor e a
   confirmação manual (obrigatória em qualquer caso) assume.
-- **Dependência de terceiros documentada**: na primeira vez que o
-  fallback de OCR roda em cada dispositivo, o navegador baixa o motor
-  (WebAssembly) e o modelo de idioma do CDN público do Tesseract.js
-  (`cdn.jsdelivr.net`) — configuração padrão da biblioteca. Nenhum dado
+- **Dependência de terceiros documentada**: na primeira vez que o OCR
+  roda em cada dispositivo, o navegador baixa os pesos do modelo do
+  PaddleOCR (~6 MB, do Hugging Face, via `ppu-paddle-ocr`). Nenhum dado
   do usuário (foto, valor, observação) é enviado nessa chamada, só o
-  próprio código/modelo do motor é baixado. O WASM do OpenCV.js (leitor
-  de 7 segmentos, usado antes desse fallback) **não** tem essa
-  dependência de terceiros — é servido pelo próprio domínio da
-  aplicação, como qualquer outro asset do bundle. Ver
-  `docs/architecture.md` ("Câmera e OCR").
+  próprio modelo é baixado — mas isso exige internet no primeiro uso.
+  Ver `docs/architecture.md` ("Câmera e OCR") e
+  `docs/historico-correcoes.md`.
 - Exportação de dados (CSV/JSON) sai do dispositivo apenas por ação
   explícita do usuário (botão de exportar), via download comum ou pela
   Web Share API nativa — nunca automaticamente, nunca para um servidor
@@ -63,6 +62,53 @@ inicial, no onboarding e nas telas do app.
   e `Permissions-Policy: camera=(self), microphone=(), geolocation=()`
   — liberando a câmera só para a própria origem (necessária para o OCR)
   e negando microfone/geolocalização, que o app não usa.
+
+### Fotos do visor guardadas no aparelho
+
+Decisão de 08/10/2026 (o `CLAUDE.md`, seção 17, regra 10, só permite
+persistir foto com consentimento específico):
+
+- No registro por câmera, a tela de confirmação mostra a opção **"Guardar
+  foto do visor neste aparelho"**, **ligada por padrão**, com o aviso de
+  que a foto fica só no aparelho, nunca vai a um servidor e some junto
+  com a medição. O usuário pode desligá-la antes de salvar; se remover a
+  imagem, nada é guardado e a origem vira "manual".
+- Guarda-se **apenas o recorte confirmado**, reduzido (largura máxima de
+  640 px, JPEG ~0,8), na tabela `ocrImages` do IndexedDB do usuário
+  (`src/lib/db/ocr-image-repository.ts`). Nunca entra em `measurements`,
+  no CSV nem no JSON de "todos os dados", e **não é sincronizada**.
+- A foto é apagada **quando a medição é excluída** (`measurementRepository.remove`)
+  ou quando o usuário toca em "Remover foto" no detalhe da medição. Como o
+  app não tem purge de tombstones, manter a foto depois da exclusão a
+  deixaria para sempre no aparelho; por isso ela não é mantida. O
+  "desfazer" do histórico guarda o blob só em memória durante a janela do
+  desfazer.
+- Logout concluído e exclusão de conta apagam o banco inteiro do usuário
+  (`clearActiveUserLocalData`), fotos inclusive. Como ainda não há
+  sincronização, o botão **Sair** conta o que existe só neste aparelho
+  (`src/features/auth/local-data-summary.ts`) e, havendo medições ou fotos,
+  mostra um aviso com opção de exportar e de cancelar antes de apagar
+  (CLAUDE.md seções 10.2 e 17, regra 11).
+- No PDF, as fotos só entram se o usuário marcar "Incluir no PDF as fotos
+  do visor" ao exportar (limite de 40 por documento).
+- **Limitações:** o IndexedDB não protege contra aparelho comprometido
+  (mesma limitação dos demais dados locais). **Pendência jurídica:** os
+  textos de `/privacidade` agora descrevem as fotos e como encerrar o
+  tratamento, mas são rascunhos; a `TERMS_DOCUMENT_VERSION` não foi alterada
+  (mudar a versão pede novo aceite dos usuários, decisão do responsável pelo
+  produto). Precisam de revisão jurídica antes de qualquer uso real. Quando existir sincronização, guardar foto na nuvem
+  exigirá decisão própria (Storage com RLS e consentimento específico).
+
+### Revogação de consentimento (pendência)
+
+Em 08/10/2026 o botão "Revogar consentimento" foi removido da central de
+privacidade (decisão do responsável pelo produto). O `CLAUDE.md` (seções
+10.3, 10.13 e 15) pede consentimento revogável; hoje o caminho disponível
+no app para encerrar o tratamento é **Excluir conta e dados**. A coluna
+`revoked_at` de `consent_records` continua existindo, sem fluxo na
+interface. Antes de uso real é preciso definir juridicamente como a
+revogação será oferecida (por exemplo, contato com o responsável). Este
+projeto **não** declara conformidade total com a LGPD.
 
 ### Exclusão de conta
 

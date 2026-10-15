@@ -1,7 +1,10 @@
 "use client";
 
+import type { ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import GlucoseLineChart from "@/features/measurements/components/glucose-line-chart";
+import HourlyGlucoseChart from "@/features/measurements/components/hourly-glucose-chart";
+import { buildHourlyGlucoseProfile } from "@/features/measurements/chart-data";
 import type { GlucoseMeasurement } from "@/lib/db/measurement-repository";
 import type { TargetRange } from "@/features/measurements/classify";
 
@@ -9,28 +12,30 @@ const CHART_WIDTH = 800;
 const CHART_HEIGHT = 320;
 const CAPTURE_SCALE = 2;
 
+type ResolvedChartColors = {
+  border: string;
+  foreground: string;
+  statusWithin: string;
+  brandBlue: string;
+};
+
 function resolveCssVar(name: string, fallback: string): string {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return value || fallback;
 }
 
 /**
- * Rasteriza o gráfico principal (linha do tempo) como PNG para embutir
- * no PDF exportado. Renderiza `GlucoseLineChart` fora da viewport (não
- * `display:none` — `ResponsiveContainer` precisa de tamanho de layout
- * não-nulo para medir via `ResizeObserver`), resolve as cores reais do
- * tema atual (uma `<img>` carregada a partir de um SVG serializado não
- * herda `var(--...)` do documento) e desenha o SVG resultante num
- * canvas. Retorna `null` quando não há medições ou algo falha na
- * captura — o PDF simplesmente omite a imagem nesse caso, nunca
- * fabrica um gráfico vazio.
+ * Renderiza um gráfico do Recharts fora da viewport (não `display:none` —
+ * `ResponsiveContainer` precisa de tamanho de layout não-nulo para medir
+ * via `ResizeObserver`), resolve as cores reais do tema atual (uma
+ * `<img>` carregada a partir de um SVG serializado não herda `var(--...)`
+ * do documento) e desenha o SVG resultante num canvas PNG. Retorna `null`
+ * quando algo falha na captura — o PDF simplesmente omite a imagem nesse
+ * caso, nunca fabrica um gráfico vazio.
  */
-export async function captureChartImage(
-  measurements: GlucoseMeasurement[],
-  targetRange: TargetRange | null,
+async function rasterizeChart(
+  render: (colors: ResolvedChartColors) => ReactElement,
 ): Promise<string | null> {
-  if (measurements.length === 0) return null;
-
   const container = document.createElement("div");
   container.style.position = "fixed";
   container.style.left = "-9999px";
@@ -43,16 +48,14 @@ export async function captureChartImage(
   let objectUrl: string | null = null;
 
   try {
-    const colors = {
+    const colors: ResolvedChartColors = {
       border: resolveCssVar("--border", "#dbe3ee"),
       foreground: resolveCssVar("--foreground", "#14294b"),
       statusWithin: resolveCssVar("--status-within", "#22c55e"),
       brandBlue: resolveCssVar("--brand-blue", "#1e9af3"),
     };
 
-    root.render(
-      <GlucoseLineChart measurements={measurements} targetRange={targetRange} colors={colors} />,
-    );
+    root.render(render(colors));
 
     // Duas animation frames: uma para o commit/layout do React, outra
     // para o paint que o ResizeObserver do Recharts usa para medir o
@@ -87,4 +90,32 @@ export async function captureChartImage(
     root.unmount();
     container.remove();
   }
+}
+
+/** Rasteriza o gráfico principal (linha do tempo) como PNG para embutir no PDF exportado. */
+export async function captureChartImage(
+  measurements: GlucoseMeasurement[],
+  targetRange: TargetRange | null,
+): Promise<string | null> {
+  if (measurements.length === 0) return null;
+  return rasterizeChart((colors) => (
+    <GlucoseLineChart measurements={measurements} targetRange={targetRange} colors={colors} />
+  ));
+}
+
+/** Rasteriza o gráfico por hora do dia como PNG para o PDF. Sem medições, não gera imagem. */
+export async function captureHourlyChartImage(
+  measurements: GlucoseMeasurement[],
+  targetRange: TargetRange | null,
+): Promise<string | null> {
+  if (measurements.length === 0) return null;
+  const points = buildHourlyGlucoseProfile(measurements);
+  return rasterizeChart((colors) => (
+    <HourlyGlucoseChart
+      points={points}
+      targetRange={targetRange}
+      height={CHART_HEIGHT}
+      colors={colors}
+    />
+  ));
 }

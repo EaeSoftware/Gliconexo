@@ -22,6 +22,16 @@ export default function TermosPage() {
         </section>
         <section>
           <h2 className="mb-2 text-lg font-semibold text-foreground">
+            Conferência da leitura
+          </h2>
+          <p>
+            O valor reconhecido pela câmera é uma sugestão. Confira sempre o
+            valor no visor do glicosímetro antes de confirmar e salvar; o
+            registro só é feito depois da sua confirmação.
+          </p>
+        </section>
+        <section>
+          <h2 className="mb-2 text-lg font-semibold text-foreground">
             Responsabilidade do usuário
           </h2>
           <p>

@@ -27,6 +27,8 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
   const [rawImageUrl, setRawImageUrl] = useState<string | null>(null);
   const [croppedImageUrl, setCroppedImageUrl] = useState<string | null>(null);
+  // Mesmo recorte da URL acima, em memória, para o formulário poder gravá-lo se o usuário deixar a opção ligada.
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
   const [ocrProgressText, setOcrProgressText] = useState<string>("Preparando...");
 
@@ -55,6 +57,7 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
     if (croppedImageUrl) URL.revokeObjectURL(croppedImageUrl);
     setRawImageUrl(null);
     setCroppedImageUrl(null);
+    setCroppedBlob(null);
     setOcrResult(null);
     setUnavailableReason(null);
     setStep("idle");
@@ -81,6 +84,7 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
     if (rawImageUrl) URL.revokeObjectURL(rawImageUrl);
     setRawImageUrl(null);
     setCroppedImageUrl(URL.createObjectURL(croppedBlob));
+    setCroppedBlob(croppedBlob);
     setStep("processing");
     setOcrProgressText("Preparando reconhecimento...");
 
@@ -110,25 +114,29 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
   function handleRetry() {
     if (croppedImageUrl) URL.revokeObjectURL(croppedImageUrl);
     setCroppedImageUrl(null);
+    setCroppedBlob(null);
     setOcrResult(null);
     setStep("idle");
   }
 
   function handleRemoveImage() {
     // A pré-visualização já some no próprio formulário (estado local
-    // `imageRemoved`); aqui só libera a URL de blob temporária — a
-    // imagem nunca é persistida, então não há mais nada para limpar.
+    // `imageRemoved`); aqui só libera a URL de blob temporária e o recorte
+    // em memória — remover a foto significa que ela não será guardada.
     if (croppedImageUrl) URL.revokeObjectURL(croppedImageUrl);
     setCroppedImageUrl(null);
+    setCroppedBlob(null);
   }
 
   function handleSaved(measurement: GlucoseMeasurement) {
     onSaved?.(measurement);
-    // Descarta a foto temporária imediatamente após salvar — nunca é
-    // persistida. `step` continua "confirm": a própria tela de
-    // confirmação já troca para o estado "Medição salva" internamente.
+    // Descarta a foto temporária da memória logo após salvar. Se o usuário
+    // deixou a opção ligada, o formulário já gravou uma cópia reduzida no
+    // aparelho antes de chamar `onSaved`. `step` continua "confirm": a
+    // própria tela de confirmação já troca para o estado "Medição salva".
     if (croppedImageUrl) URL.revokeObjectURL(croppedImageUrl);
     setCroppedImageUrl(null);
+    setCroppedBlob(null);
   }
 
   if (step === "idle") {
@@ -143,7 +151,8 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
         <p className="text-sm text-foreground/70">
           Fotografe o visor do glicosímetro ou escolha uma imagem já
           existente. A foto não é enviada para nenhum servidor — o
-          reconhecimento acontece neste dispositivo.
+          reconhecimento acontece neste dispositivo, e você escolhe se quer
+          guardá-la no aparelho junto da medição.
         </p>
         <div className="flex w-full flex-col gap-2 sm:flex-row">
           {hasGetUserMedia ? (
@@ -226,6 +235,7 @@ export function CameraCaptureFlow({ onSaved }: CameraCaptureFlowProps) {
       <ManualEntryForm
         origin="ocr"
         previewImageUrl={croppedImageUrl ?? undefined}
+        previewImageBlob={croppedBlob ?? undefined}
         defaultValue={ocrResult?.value != null ? String(ocrResult.value) : undefined}
         ocrConfidence={ocrResult?.confidence}
         ocrEngineVersion={ocrResult?.engineVersion}

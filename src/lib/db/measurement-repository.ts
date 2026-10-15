@@ -90,16 +90,24 @@ export const measurementRepository = {
     return updated;
   },
 
-  /** Exclusão lógica (tombstone), conforme CLAUDE.md seção 13. */
+  /**
+   * Exclusão lógica (tombstone), conforme CLAUDE.md seção 13. A foto do
+   * visor, se existir, é apagada junto: o tombstone fica para a
+   * sincronização, mas a foto nunca é sincronizada e não deve sobrar no
+   * aparelho depois que o usuário excluiu a medição.
+   */
   async remove(id: string): Promise<void> {
     const db = getDb();
     const existing = await db.measurements.get(id);
     if (!existing) return;
-    await db.measurements.put({
-      ...existing,
-      deletedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      version: existing.version + 1,
+    await db.transaction("rw", db.measurements, db.ocrImages, async () => {
+      await db.measurements.put({
+        ...existing,
+        deletedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: existing.version + 1,
+      });
+      await db.ocrImages.delete(id);
     });
   },
 

@@ -52,6 +52,76 @@ export function buildDailyContextCounts(measurements: GlucoseMeasurement[]): Dai
     .map(([dateKey, group]) => ({ dateKey, label: group.label, ...group.counts }));
 }
 
+/** Média, mínimo, máximo e contagem das medições feitas em uma hora do dia (0–23). */
+export type HourlyPoint = {
+  hour: number;
+  label: string;
+  average: number;
+  min: number;
+  max: number;
+  count: number;
+};
+
+const hourFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function hourFormatter(timeZone: string | undefined): Intl.DateTimeFormat {
+  const key = timeZone ?? "";
+  let formatter = hourFormatters.get(key);
+  if (!formatter) {
+    try {
+      formatter = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone });
+    } catch {
+      // Fuso inválido gravado na medição: cai para o fuso do dispositivo em vez de quebrar o gráfico.
+      formatter = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23" });
+    }
+    hourFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+/** Hora do dia (0–23) de um instante, no fuso informado. */
+export function hourOfDay(date: Date, timeZone?: string): number {
+  return Number(hourFormatter(timeZone).format(date)) % 24;
+}
+
+/**
+ * Perfil por hora do dia: agrupa as medições pela hora em que foram feitas
+ * (independente do dia) e calcula média, mínimo, máximo e contagem de cada
+ * hora. Horas sem nenhuma medição não aparecem — nada é interpolado nem
+ * preenchido com zero (CLAUDE.md, seção 17, regra 5).
+ *
+ * A hora é lida no fuso gravado em cada medição (`timezone`), isto é, o
+ * relógio que a pessoa via ao medir. `timeZone` só serve de substituto
+ * explícito, por exemplo nos testes.
+ */
+export function buildHourlyGlucoseProfile(
+  measurements: GlucoseMeasurement[],
+  timeZone?: string,
+): HourlyPoint[] {
+  const groups = new Map<number, number[]>();
+
+  for (const measurement of measurements) {
+    const hour = hourOfDay(new Date(measurement.measuredAt), timeZone ?? measurement.timezone);
+    const values = groups.get(hour);
+    if (values) values.push(measurement.valueMgDl);
+    else groups.set(hour, [measurement.valueMgDl]);
+  }
+
+  return Array.from(groups.entries())
+    .map(([hour, values]) => {
+      const sum = values.reduce((total, value) => total + value, 0);
+      return {
+        hour,
+        label: `${String(hour).padStart(2, "0")}h`,
+        average: Math.round((sum / values.length) * 10) / 10,
+        min: Math.min(...values),
+        max: Math.max(...values),
+        count: values.length,
+      };
+    })
+    .sort((a, b) => a.hour - b.hour);
+}
+
 export type ChartGranularity = "day" | "week" | "month";
 
 /** Uma média (e mínimo/máximo/contagem) por balde de dia, semana ou mês. */

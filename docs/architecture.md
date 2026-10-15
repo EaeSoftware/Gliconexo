@@ -209,16 +209,25 @@ relevantes:
 - `src/features/ocr/canvas-utils.ts` concentra as operações de canvas
   (girar, recortar, extrair/gravar pixels) usadas pelo editor de
   imagem.
-- A foto (original, recortada e as variantes pré-processadas) só existe
-  como `Blob`/`URL.createObjectURL` em memória — nunca é gravada no
-  IndexedDB nem enviada a um servidor. Todo `object URL` temporário é
-  revogado ao salvar, cancelar ou tentar novamente
-  (`CameraCaptureFlow`).
-- **Dependência externa:** o motor (WebAssembly) e o modelo de idioma
-  são baixados do CDN público do Tesseract.js na primeira execução
-  neste dispositivo — não há dado do usuário nessa chamada, mas é uma
-  dependência de terceiros que exige internet nesse momento. Ver
+- A foto original e as variantes pré-processadas só existem como
+  `Blob`/`URL.createObjectURL` em memória e nunca são gravadas nem
+  enviadas a um servidor. Todo `object URL` temporário é revogado ao
+  salvar, cancelar ou tentar novamente (`CameraCaptureFlow`).
+- **Foto do visor guardada (opcional, 08/10/2026):** só o **recorte
+  confirmado** pode ser gravado, se o usuário deixar ligada a opção
+  "Guardar foto do visor neste aparelho". O `CameraCaptureFlow` mantém o
+  recorte em estado (`croppedBlob`) e o entrega ao `ManualEntryForm`, que,
+  **depois** de criar a medição, reduz a imagem (`downscaleImageBlob`,
+  640 px, JPEG) e a grava com `ocrImageRepository.save` na tabela
+  `ocrImages` (Dexie, versão 3 do banco), indexada pelo `id` da medição.
+  Falha ao gravar a foto não desfaz a medição; o usuário é avisado. A
+  tabela é separada de `measurements` de propósito (não pesa na leitura
+  do histórico e não entra nos exports). Detalhes de privacidade em
   `docs/privacy-and-security.md`.
+- **Dependência externa:** os pesos do modelo do PaddleOCR (~6 MB) são
+  baixados do Hugging Face na primeira execução neste dispositivo — não
+  há dado do usuário nessa chamada, mas é uma dependência de terceiros
+  que exige internet nesse momento. Ver `docs/privacy-and-security.md`.
 
 ## Service worker e cache (implementado)
 

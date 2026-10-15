@@ -34,12 +34,29 @@ export default function PrivacidadePage() {
         </section>
         <section>
           <h2 className="mb-2 text-lg font-semibold text-foreground">
+            Fotos do visor do glicosímetro
+          </h2>
+          <p>
+            A foto é processada no seu aparelho e não é enviada a nenhum
+            servidor. Ao registrar por câmera, você escolhe se quer guardar a
+            foto do visor junto da medição (a opção vem marcada e pode ser
+            desmarcada). Quando guardada, a foto fica somente neste aparelho, é
+            apagada quando a medição é excluída ou quando você a remove no
+            detalhe do registro, e só entra no PDF se você marcar essa opção ao
+            exportar. O CSV e o arquivo com todos os dados não incluem fotos.
+          </p>
+        </section>
+        <section>
+          <h2 className="mb-2 text-lg font-semibold text-foreground">
             Seus direitos
           </h2>
           <p>
-            Você pode exportar todos os seus dados e solicitar a exclusão da
-            sua conta a qualquer momento, na área de configurações do
-            aplicativo.
+            Você pode exportar seus dados e excluir sua conta a qualquer
+            momento, na área de configurações e na central de privacidade do
+            aplicativo. A exclusão da conta remove suas medições, preferências
+            e registros de consentimento, e é a forma de encerrar o tratamento
+            dos seus dados. Ao sair da conta, os dados guardados neste aparelho
+            são apagados dele.
           </p>
         </section>
       </div>

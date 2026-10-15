@@ -14,6 +14,8 @@ import {
 } from "@/features/measurements/constants";
 import { measurementRepository, type GlucoseMeasurement } from "@/lib/db/measurement-repository";
 import { getDb } from "@/lib/db/schema";
+import { ocrImageRepository } from "@/lib/db/ocr-image-repository";
+import { downscaleImageBlob } from "@/features/ocr/canvas-utils";
 import { classifyValue } from "@/features/measurements/classify";
 import { ClassificationBadge } from "@/features/measurements/components/classification-badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,12 @@ type ManualEntryFormProps = {
   onSaved?: (measurement: GlucoseMeasurement) => void;
   /** Foto recortada temporária, exibida acima do formulário (fluxo de OCR). */
   previewImageUrl?: string;
+  /**
+   * Mesmo recorte de `previewImageUrl`, em memória. Quando presente (e a
+   * opção "Guardar foto" estiver ligada), uma cópia reduzida é gravada no
+   * aparelho junto da medição.
+   */
+  previewImageBlob?: Blob;
   /** Nível de confiança do OCR (0–1), registrado junto da medição. */
   ocrConfidence?: number;
   ocrEngineVersion?: string;
@@ -70,6 +78,7 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
     defaultValue,
     onSaved,
     previewImageUrl,
+    previewImageBlob,
     ocrConfidence,
     ocrEngineVersion,
     onRetry,
@@ -81,6 +90,9 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
   const [saved, setSaved] = useState<GlucoseMeasurement | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [imageRemoved, setImageRemoved] = useState(false);
+  // Ligada por padrão; o usuário pode desligar antes de salvar (CLAUDE.md §17, regra 10).
+  const [keepPhoto, setKeepPhoto] = useState(true);
+  const [photoSaveFailed, setPhotoSaveFailed] = useState(false);
   // Sem a foto, não há mais base para classificar a medição como "ocr" —
   // volta a ser uma entrada manual (o valor já reconhecido/editado continua no campo).
   const origin = imageRemoved ? "manual" : originProp;
@@ -123,6 +135,15 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
         source: origin,
         ...(origin === "ocr" ? { ocrConfidence, ocrEngineVersion } : {}),
       });
+      // A foto só é gravada depois da medição, e uma falha aqui não desfaz
+      // a medição já salva: o usuário é avisado na tela de sucesso.
+      if (origin === "ocr" && keepPhoto && previewImageBlob) {
+        try {
+          await ocrImageRepository.save(measurement.id, await downscaleImageBlob(previewImageBlob));
+        } catch {
+          setPhotoSaveFailed(true);
+        }
+      }
       setSaved(measurement);
       onSaved?.(measurement);
     } catch {
@@ -144,6 +165,11 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
           Salva neste dispositivo. A sincronização com a nuvem será
           habilitada quando a conta do banco de dados estiver configurada.
         </p>
+        {photoSaveFailed ? (
+          <p role="alert" className="text-sm font-medium text-status-below">
+            A medição foi salva, mas não foi possível guardar a foto do visor neste aparelho.
+          </p>
+        ) : null}
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             type="button"
@@ -242,6 +268,24 @@ export function ManualEntryForm(props: ManualEntryFormProps) {
         error={errors.notes?.message}
         {...register("notes")}
       />
+
+      {!isEdit && showPreview && previewImageBlob ? (
+        <label className="flex items-start gap-3 rounded-xl border border-border bg-surface-muted p-3 text-sm text-foreground/80">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-5 w-5 shrink-0 rounded border-border"
+            checked={keepPhoto}
+            onChange={(event) => setKeepPhoto(event.target.checked)}
+          />
+          <span>
+            <span className="block font-medium text-foreground">
+              Guardar foto do visor neste aparelho
+            </span>
+            A foto fica só neste aparelho, nunca é enviada a um servidor, é apagada
+            junto com a medição e só entra no PDF se você marcar essa opção ao exportar.
+          </span>
+        </label>
+      ) : null}
 
       {!isEdit && origin === "ocr" ? (
         <div className="flex flex-col gap-1">

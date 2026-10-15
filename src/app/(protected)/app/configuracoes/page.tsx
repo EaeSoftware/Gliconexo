@@ -80,7 +80,7 @@ export default function ConfiguracoesPage() {
         <SettingsLinkRow
           icon={Shield}
           label="Central de privacidade"
-          description="Revogar consentimento e excluir conta"
+          description="Exportar dados, fotos do visor e exclusão de conta"
           href="/app/privacidade"
         />
         <SettingsLinkRow

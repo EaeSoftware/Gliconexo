@@ -45,9 +45,24 @@ export interface StoredPreferences {
   updatedAt: string;
 }
 
+/**
+ * Foto recortada do visor (a que o usuário confirmou no fluxo de OCR),
+ * guardada só neste aparelho e só quando ele deixa a opção ligada. Fica em
+ * uma tabela própria — fora de `measurements` — para não inflar a leitura
+ * do histórico nem entrar nos exports CSV/JSON. Some junto com a medição.
+ */
+export interface StoredOcrImage {
+  /** Mesmo `id` da medição a que a foto pertence. */
+  measurementId: string;
+  blob: Blob;
+  mimeType: string;
+  createdAt: string;
+}
+
 class GlicoNexoDB extends Dexie {
   measurements!: EntityTable<StoredMeasurement, "id">;
   preferences!: EntityTable<StoredPreferences, "id">;
+  ocrImages!: EntityTable<StoredOcrImage, "measurementId">;
 
   constructor(name: string) {
     super(name);
@@ -57,6 +72,10 @@ class GlicoNexoDB extends Dexie {
     // Aditivo: mantém a tabela `measurements` da versão 1 intacta.
     this.version(2).stores({
       preferences: "id",
+    });
+    // Aditivo: fotos do visor, opcionais e locais.
+    this.version(3).stores({
+      ocrImages: "measurementId",
     });
   }
 }

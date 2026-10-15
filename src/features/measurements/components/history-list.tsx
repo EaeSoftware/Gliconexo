@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getDb } from "@/lib/db/schema";
 import { measurementRepository } from "@/lib/db/measurement-repository";
+import { ocrImageRepository } from "@/lib/db/ocr-image-repository";
 import { classifyValue } from "@/features/measurements/classify";
 import {
   DEFAULT_MEASUREMENT_FILTERS,
@@ -20,6 +21,7 @@ import { ClipboardList, SearchX } from "lucide-react";
 export function HistoryList() {
   const [filters, setFilters] = useState(DEFAULT_MEASUREMENT_FILTERS);
   const [pendingUndoId, setPendingUndoId] = useState<string | null>(null);
+  const pendingUndoPhotoRef = useRef<{ id: string; blob: Blob } | null>(null);
 
   const measurements = useLiveQuery(
     () => getDb().measurements.orderBy("measuredAt").reverse().toArray(),
@@ -43,6 +45,10 @@ export function HistoryList() {
   const groups = groupMeasurementsByDay(filtered);
 
   async function handleDelete(id: string) {
+    // `remove` apaga a foto do visor junto; guardamos o blob só em memória,
+    // durante a janela de "desfazer", para regravá-lo caso o usuário desfaça.
+    const photo = await ocrImageRepository.get(id);
+    pendingUndoPhotoRef.current = photo ? { id, blob: photo.blob } : null;
     await measurementRepository.remove(id);
     setPendingUndoId(id);
   }
@@ -50,6 +56,16 @@ export function HistoryList() {
   async function handleUndo() {
     if (!pendingUndoId) return;
     await measurementRepository.restore(pendingUndoId);
+    const photo = pendingUndoPhotoRef.current;
+    if (photo && photo.id === pendingUndoId) {
+      await ocrImageRepository.save(photo.id, photo.blob);
+    }
+    pendingUndoPhotoRef.current = null;
+    setPendingUndoId(null);
+  }
+
+  function handleUndoExpire() {
+    pendingUndoPhotoRef.current = null;
     setPendingUndoId(null);
   }
 
@@ -100,7 +116,7 @@ export function HistoryList() {
         <UndoToast
           message="Medição excluída."
           onUndo={handleUndo}
-          onExpire={() => setPendingUndoId(null)}
+          onExpire={handleUndoExpire}
         />
       ) : null}
     </>

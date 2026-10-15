@@ -7,6 +7,9 @@ const serverSignOut = vi.fn().mockResolvedValue({});
 const signInWithPassword = vi.fn();
 const deleteUser = vi.fn();
 
+// `admin.ts` importa `server-only`, que lança fora de um Server Component; no teste basta neutralizá-lo.
+vi.mock("server-only", () => ({}));
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ auth: { getUser, signOut: serverSignOut } }),
 }));

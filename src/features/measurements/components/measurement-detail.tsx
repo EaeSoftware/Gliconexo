@@ -13,6 +13,7 @@ import {
 import { ManualEntryForm } from "@/features/measurements/components/manual-entry-form";
 import { classifyValue } from "@/features/measurements/classify";
 import { ClassificationBadge } from "@/features/measurements/components/classification-badge";
+import { MeasurementPhoto } from "@/features/measurements/components/measurement-photo";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { SearchX } from "lucide-react";
@@ -131,6 +132,8 @@ export function MeasurementDetail({ id }: { id: string }) {
           Ainda não sincronizado com a nuvem · versão {measurement.version}
         </p>
       </div>
+
+      <MeasurementPhoto measurementId={measurement.id} />
 
       <div className="flex gap-3">
         <Button type="button" variant="outline" className="flex-1" onClick={() => setMode("edit")}>

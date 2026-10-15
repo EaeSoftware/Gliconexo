@@ -138,8 +138,12 @@ Duas abas, como pede a especificação:
   `ManualEntryForm` usado no registro manual, sempre exigindo
   confirmação antes de salvar; sem candidato reconhecido, o campo fica
   em branco para digitação manual, com a foto ainda visível. A foto
-  nunca é enviada a nenhum servidor nem persistida — o object URL
-  temporário é revogado ao salvar, cancelar ou tentar novamente. Sem
+  nunca é enviada a nenhum servidor — o object URL temporário é
+  revogado ao salvar, cancelar ou tentar novamente. **Foto do visor
+  (08/10/2026):** a tela de confirmação tem a opção "Guardar foto do
+  visor neste aparelho", ligada por padrão, que grava uma cópia reduzida
+  do recorte só neste aparelho (tabela `ocrImages`); desligada, ou com a
+  imagem removida, nada é guardado. Sem
   `getUserMedia` (ou permissão negada), cai automaticamente para
   `<input type="file" accept="image/*" capture="environment">`.
   **Limitação conhecida:** o motor de OCR (WebAssembly) e o modelo de
@@ -178,7 +182,10 @@ existe. Modo "Editar" reaproveita o `ManualEntryForm` (preserva a
 origem original, incrementa `version`/`updatedAt`), e "Excluir" pede
 confirmação antes de fazer a exclusão lógica e voltar ao histórico.
 Também mostra o selo de classificação abaixo/dentro/acima quando há
-faixa configurada.
+faixa configurada. Se a medição tem **foto do visor** guardada
+(`MeasurementPhoto`), mostra a foto com o aviso de que ela fica só no
+aparelho e um botão "Remover foto" (com confirmação) que apaga a foto sem
+excluir a medição.
 
 ### `/app/analises` — Análises
 **Arquivo:** `src/app/(protected)/app/analises/page.tsx` · **Componente:** `AnalyticsSummary` (`src/features/measurements/components/analytics-summary.tsx`) · **Status:** ✅ Funcional (dados locais reais)
@@ -219,6 +226,16 @@ restantes (`getDashboardProgress`). A partir da 4ª:
   gráficos por contexto"). Sem interpolar entre pontos de baldes
   diferentes nem entre dias sem dado; legenda própria (em ordem fixa,
   não alfabética) e tabela de dados equivalente.
+- **Glicemia por hora do dia** (`HourlyGlucoseSection` +
+  `HourlyGlucoseChart`, lazy, 08/10/2026): eixo de 0h a 23h com a
+  **média** das medições de cada hora (somando todos os dias do período
+  filtrado) e pontos vazios para o mínimo e o máximo da hora
+  (`buildHourlyGlucoseProfile`, em `chart-data.ts`, testada). A hora é
+  lida no fuso gravado em cada medição. Horas sem medição ficam sem ponto
+  e a linha não liga os pontos através delas (sem interpolação); a faixa
+  pessoal aparece como área de fundo quando configurada. Tem tabela de
+  dados equivalente (hora, média, mín., máx., medições) e informa quantas
+  medições entraram no cálculo. O mesmo gráfico vai para o PDF.
 - **Medições por dia e contexto** (`DailyContextSection` +
   `DailyContextChart`, lazy): barras empilhadas por dia, com a mesma
   paleta e legenda do gráfico anterior — quantidade de medições por dia,
@@ -229,7 +246,7 @@ restantes (`getDashboardProgress`). A partir da 4ª:
 fora deste incremento (o histórico já filtra por contexto).
 
 ### `/app/relatorios` — Relatórios
-**Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Componente:** `ExportPanel` (`src/features/reports/components/export-panel.tsx`) · **Status:** 🟡 Parcial — CSV real, PDF ainda não existe
+**Arquivo:** `src/app/(protected)/app/relatorios/page.tsx` · **Componente:** `ExportPanel` (`src/features/reports/components/export-panel.tsx`) · **Status:** ✅ CSV e PDF reais
 
 Sem medições, mostra "Nenhum dado para exportar ainda". Com medições:
 seletor de período (7/30/90 dias/tudo, reaproveitando `PeriodSelect`),
@@ -242,8 +259,17 @@ relação com refeição/origem/observação, com escape correto de vírgulas,
 aspas e quebras de linha. O botão usa a Web Share API quando disponível
 ("Compartilhar CSV") ou baixa o arquivo direto ("Baixar CSV") — nunca
 `window.open`, para não abrir uma aba nem disparar nenhum comportamento
-nativo inesperado no Android/iOS. **O que falta:** exportação em PDF
-(ainda mostra uma nota explicando isso).
+nativo inesperado no Android/iOS.
+
+**PDF** (`buildMeasurementsPdf`, jsPDF + jspdf-autotable, carregados sob
+demanda): título, identificação opcional, período, data/hora de geração,
+resumo numérico, gráfico da linha do tempo, **gráfico por hora do dia**,
+faixa configurada, tabela cronológica e aviso informativo no rodapé. Se
+houver fotos do visor guardadas no período, aparece o checkbox "Incluir
+no PDF as fotos do visor (N no período)" (ligado por padrão): a seção
+"Fotos do visor (OCR)" traz miniaturas em grade com data/hora, valor e
+confiança do OCR, limitada a 40 fotos por documento (o PDF avisa quantas
+ficaram de fora). CSV e "todos os dados" nunca levam foto.
 
 ### `/app/configuracoes` — Configurações
 **Arquivo:** `src/app/(protected)/app/configuracoes/page.tsx` · **Status:** 🟡 Parcial
@@ -265,8 +291,11 @@ JSON completo. "Excluir conta e dados" (`DeleteAccountSection`) fica
 ativo para contas com e-mail e senha: pede a senha atual e a palavra
 `EXCLUIR`, chama `POST /api/conta/excluir` e, após sucesso, apaga o
 IndexedDB local e encerra a sessão. No modo visitante (login anônimo) a
-seção explica que a exclusão é só para contas com e-mail. "Revogar
-consentimento" continua desabilitado.
+seção explica que a exclusão é só para contas com e-mail. O card
+"Fotos do visor" explica que as fotos ficam só no aparelho e como
+removê-las. O botão "Revogar consentimento" foi **removido** em
+08/10/2026 (pendência jurídica registrada em
+`docs/privacy-and-security.md`).
 
 ---
 

@@ -6,8 +6,10 @@ import { getDb } from "@/lib/db/schema";
 import { filterMeasurements, type PeriodFilter } from "@/features/measurements/filter-measurements";
 import { PeriodSelect } from "@/features/measurements/components/period-select";
 import { buildMeasurementsCsv } from "@/features/reports/csv";
-import { buildMeasurementsPdf } from "@/features/reports/pdf";
-import { captureChartImage } from "@/features/reports/capture-chart-image";
+import { buildMeasurementsPdf, buildPdfPhotoEntries, MAX_PDF_PHOTOS } from "@/features/reports/pdf";
+import { captureChartImage, captureHourlyChartImage } from "@/features/reports/capture-chart-image";
+import { blobToDataUrl } from "@/lib/export/blob-to-data-url";
+import { ocrImageRepository } from "@/lib/db/ocr-image-repository";
 import { periodFilenamePart } from "@/features/reports/filename";
 import { computeMeasurementStats, computeRangeDistribution } from "@/features/measurements/stats";
 import { formatMeasurementCount } from "@/features/measurements/pluralize";
@@ -21,6 +23,8 @@ import { FileText } from "lucide-react";
 export function ExportPanel() {
   const [period, setPeriod] = useState<PeriodFilter>(30);
   const [includeNotes, setIncludeNotes] = useState(false);
+  // Ligada por padrão, mas só aparece quando há fotos no período (o usuário pediu a exportação).
+  const [includePhotos, setIncludePhotos] = useState(true);
   const [identification, setIdentification] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -31,6 +35,11 @@ export function ExportPanel() {
     [],
   );
   const preferences = useLiveQuery(() => getDb().preferences.get("local"), []);
+  // Só as chaves (ids das medições com foto): não carrega os blobs apenas para saber se existem.
+  const photoIds = useLiveQuery(
+    async () => new Set((await getDb().ocrImages.toCollection().primaryKeys()) as string[]),
+    [],
+  );
 
   if (measurements === undefined) {
     return (
@@ -56,6 +65,8 @@ export function ExportPanel() {
     origin: "all",
     range: "all",
   });
+
+  const filteredWithPhoto = filtered.filter((m) => photoIds?.has(m.id));
 
   async function handleExportCsv() {
     setIsExporting(true);
@@ -86,6 +97,25 @@ export function ExportPanel() {
     try {
       const targetRange = preferences ?? null;
       const chartImageDataUrl = await captureChartImage(filtered, targetRange);
+      const hourlyChartImageDataUrl = await captureHourlyChartImage(filtered, targetRange);
+
+      let photos: Awaited<ReturnType<typeof buildPdfPhotoEntries>>["photos"] = [];
+      let omittedPhotos = 0;
+      if (includePhotos && filteredWithPhoto.length > 0) {
+        // Carrega só as fotos que cabem no PDF (as mais antigas do período, como na tabela).
+        const chronological = [...filteredWithPhoto].sort(
+          (a, b) => new Date(a.measuredAt).getTime() - new Date(b.measuredAt).getTime(),
+        );
+        const images = await ocrImageRepository.listForMeasurements(
+          chronological.slice(0, MAX_PDF_PHOTOS).map((m) => m.id),
+        );
+        const dataUrls = new Map<string, string>();
+        for (const [id, image] of images) dataUrls.set(id, await blobToDataUrl(image.blob));
+        const entries = buildPdfPhotoEntries(filteredWithPhoto, dataUrls);
+        photos = entries.photos;
+        omittedPhotos = filteredWithPhoto.length - photos.length;
+      }
+
       const pdfBlob = await buildMeasurementsPdf(
         filtered,
         {
@@ -98,6 +128,9 @@ export function ExportPanel() {
           period,
           targetRange,
           chartImageDataUrl,
+          hourlyChartImageDataUrl,
+          photos,
+          omittedPhotos,
         },
       );
       const today = new Intl.DateTimeFormat("sv-SE").format(new Date());
@@ -140,6 +173,18 @@ export function ExportPanel() {
           />
           Incluir observações no arquivo
         </label>
+
+        {filteredWithPhoto.length > 0 ? (
+          <label className="mt-3 flex items-center gap-2 text-sm text-foreground/80">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-border"
+              checked={includePhotos}
+              onChange={(event) => setIncludePhotos(event.target.checked)}
+            />
+            Incluir no PDF as fotos do visor ({filteredWithPhoto.length} no período)
+          </label>
+        ) : null}
 
         <p className="mt-3 text-sm text-foreground/60">
           {formatMeasurementCount(filtered.length)} no período selecionado.

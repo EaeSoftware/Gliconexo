@@ -12,6 +12,7 @@ import { ChartTypeSwitcher, type ChartType } from "@/features/measurements/compo
 import { GranularitySelect } from "@/features/measurements/components/granularity-select";
 import { ContextSeriesSection } from "@/features/measurements/components/context-series-section";
 import { DailyContextSection } from "@/features/measurements/components/daily-context-section";
+import { HourlyGlucoseSection } from "@/features/measurements/components/hourly-glucose-section";
 import { PeriodSelect } from "@/features/measurements/components/period-select";
 import { formatMeasurementCount } from "@/features/measurements/pluralize";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -129,6 +130,7 @@ export function AnalyticsSummary() {
             granularity={granularity}
             distribution={distribution}
           />
+          <HourlyGlucoseSection measurements={filtered} targetRange={targetRange} />
           <ContextSeriesSection measurements={filtered} />
           <DailyContextSection measurements={filtered} />
 
