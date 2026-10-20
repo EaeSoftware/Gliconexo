@@ -1,4 +1,4 @@
-import { Camera, WifiOff, LineChart, ShieldCheck } from "lucide-react";
+import { Camera, LineChart, ShieldCheck } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 
 const FEATURES = [
@@ -7,12 +7,6 @@ const FEATURES = [
     title: "Câmera + OCR",
     description:
       "Fotografe o visor do glicosímetro e confirme o valor reconhecido antes de salvar. O registro manual está sempre disponível.",
-  },
-  {
-    icon: WifiOff,
-    title: "Funciona offline",
-    description:
-      "Registre medições mesmo sem internet. A sincronização acontece automaticamente quando a conexão voltar.",
   },
   {
     icon: LineChart,
@@ -42,7 +36,7 @@ export default function LandingPage() {
           <p className="max-w-xl text-lg text-foreground/70">
             O GlicoNexo ajuda pessoas com Diabetes Mellitus Tipo 1 a fotografar o
             visor do glicosímetro, revisar o valor e manter um histórico
-            organizado — mesmo sem internet.
+            organizado.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -72,7 +66,7 @@ export default function LandingPage() {
           </h2>
         </div>
 
-        <dl className="grid w-full gap-6 text-left sm:grid-cols-3">
+        <dl className="mx-auto grid w-full max-w-3xl gap-6 text-left sm:grid-cols-2">
           {FEATURES.map(({ icon: Icon, title, description }) => (
             <div
               key={title}
